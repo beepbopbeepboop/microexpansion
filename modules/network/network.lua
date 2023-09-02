@@ -208,6 +208,9 @@ local function create_inventory(net)
     allow_put = function(inv, listname, index, stack)
       local inside_stack = inv:get_stack(listname, index)
       local stack_name = stack:get_name()
+      if minetest.get_item_group(stack_name, "microexpansion_cell") > 0 then
+        return 0
+      end
       -- improve performance by skipping unnessecary calls
       if inside_stack:get_name() ~= stack_name or inside_stack:get_count() >= inside_stack:get_stack_max() then
         if inv:get_stack(listname, index+1):get_name() ~= "" then
@@ -239,7 +242,8 @@ local function create_inventory(net)
       return math.min(stack:get_count(),stack:get_stack_max())
     end,
     on_take = function()
-      net:set_storage_space(true)
+      --update the inventory size in the next step as it is not allowed in on_take
+      minetest.after(0, function() net:set_storage_space(true) end)
     end
   })
 end

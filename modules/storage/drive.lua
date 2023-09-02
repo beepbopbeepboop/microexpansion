@@ -311,7 +311,10 @@ microexpansion.register_node("drive", {
 		inv:set_size("main", 10)
 		me.send_event(pos,"connect")
 	end,
-	can_dig = function(pos)
+	can_dig = function(pos, player)
+                if minetest.is_protected(pos, player) then
+                  return false
+                end
 		local meta = minetest.get_meta(pos)
 		local inv = meta:get_inventory()
 		return inv:is_empty("main")
@@ -320,10 +323,10 @@ microexpansion.register_node("drive", {
    me.send_event(pos,"disconnect")
   end,
 	allow_metadata_inventory_put = function(_, _, _, stack)
-		if minetest.get_item_group(stack:get_name(), "microexpansion_cell") ~= 0 then
-			return 1
-		else
+		if minetest.is_protected(pos, player) or minetest.get_item_group(stack:get_name(), "microexpansion_cell") == 0 then
 			return 0
+		else
+			return 1
 		end
 	end,
 	on_metadata_inventory_put = function(pos, _, _, stack)
@@ -345,8 +348,11 @@ microexpansion.register_node("drive", {
 		end
 		me.send_event(pos,"items",{net=network})
 	end,
-	allow_metadata_inventory_take = function(pos,_,_,stack) --args: pos, listname, index, stack, player
-    local network = me.get_connected_network(pos)
+	allow_metadata_inventory_take = function(pos,_,_,stack, player) --args: pos, listname, index, stack, player
+                if minetest.is_protected(pos, player) then
+                  return 0
+                end
+                local network = me.get_connected_network(pos)
 		write_drive_cells(pos,network)
 		return stack:get_count()
 	end,
