@@ -203,6 +203,8 @@ microexpansion.register_node("security", {
 		if fields.logout then
 			meta:set_string("formspec", security_formspec(pos))
 		elseif fields.login or fields.back then
+			-- carry over networks from old versions
+			net:fallback_access()
 			meta:set_string("formspec", security_formspec(pos, name))
 		elseif fields.search or fields.key_enter_field == "filter" then
 			meta:set_string("formspec", security_formspec(pos, name), false, fields.filter)
