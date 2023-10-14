@@ -2,8 +2,7 @@
 
 local me = microexpansion
 local network = me.network
-
---FIXME: accept multiple controllers in one network
+local access_level = microexpansion.constants.security.access_levels
 
 -- [register node] Controller
 me.register_node("ctrl", {
@@ -45,6 +44,10 @@ me.register_node("ctrl", {
 	groups = { cracky = 1, me_connect = 1, },
 	connect_sides = "nobottom",
 	me_update = function(pos,_,ev)
+		local meta = minetest.get_meta(pos)
+		if meta:get_string("source") ~= "" then
+			return
+		end
     local cnet = me.get_network(pos)
     if cnet == nil then
       microexpansion.log("no network for ctrl at pos "..minetest.pos_to_string(pos),"error")
@@ -54,30 +57,70 @@ me.register_node("ctrl", {
   end,
   on_construct = function(pos)
     local meta = minetest.get_meta(pos)
-    local net = network.new({controller_pos = pos})
-    table.insert(me.networks,net)
-    me.send_event(pos,"connect",{net=net})
-
+		local net,cp = me.get_connected_network(pos)
+		if net then
+			meta:set_string("source", vector.to_string(cp))
+		else
+  	  net = network.new({controller_pos = pos})
+  	  table.insert(me.networks,net)
+		end
+	  me.send_event(pos,"connect",{net=net})
     meta:set_string("infotext", "Network Controller")
   end,
 	after_place_node = function(pos, player)
 		local name = player:get_player_name()
 		local meta = minetest.get_meta(pos)
-		meta:set_string("infotext", "Network Controller (owned by "..name..")")
+		meta:set_string("infotext", "Network Controller")
 		meta:set_string("owner", name)
+		local net,idx = me.get_network(pos)
+		if net then
+      net:set_access_level(name, me.constants.security.access_levels.full)
+		elseif meta:get_string("source") == "" then
+			me.log("no network after placing controller", "warning")
+    end
+	end,
+	can_dig = function(pos, player)
+		if not player then
+			return false
+		end
+		local name = player:get_player_name()
+		if minetest.is_protected(pos, name) then
+			minetest.record_protection_violation(pos, name)
+			return false
+		end
+		local meta = minetest.get_meta(pos)
+		local net
+		if meta:get_string("source") == "" then
+			net = me.get_network(pos)
+		else
+			net = me.get_connected_network(pos)
+		end
+		if not net then
+			me.log("ME Network Controller without Network","error")
+			return false
+		end
+		return net:get_access_level(name) >= access_level.full
 	end,
 	on_destruct = function(pos)
     local net,idx = me.get_network(pos)
     --disconnect all those who need the network
     me.send_event(pos,"disconnect",{net=net})
     if net then
-      net:destruct()
+			if me.promote_controller(pos,net) then
+				--reconnect with new controller
+				me.send_event(pos,"reconnect",{net=net})
+			else
+	      net:destruct()
+		    if idx then
+		      table.remove(me.networks,idx)
+  			end
+		    --disconnect all those that haven't realized the network is gone
+		    me.send_event(pos,"disconnect")
+			end
+		else
+			-- disconnect just in case
+			me.send_event(pos,"disconnect")
     end
-    if idx then
-      table.remove(me.networks,idx)
-    end
-    --disconnect all those that haven't realized the network is gone
-    me.send_event(pos,"disconnect")
 	end,
 	after_destruct = function(pos)
     --disconnect all those that haven't realized the controller was disconnected
@@ -114,11 +157,48 @@ me.register_machine("cable", {
 	paramtype = "light",
 	groups = { crumbly = 1, },
 	--TODO: move these functions into the registration
+	can_dig = function(pos, player)
+		if not player then
+			return false
+		end
+		local name = player:get_player_name()
+		if minetest.is_protected(pos, name) then
+			minetest.record_protection_violation(pos, name)
+			return false
+		end
+		local net,cp = me.get_connected_network(pos)
+		if not net then
+			return true
+		end
+		return net:get_access_level(name) >= access_level.modify
+	end,
 	on_construct = function(pos)
 	 me.send_event(pos,"connect")
 	end,
+	after_place_node = function(pos, placer)
+		if not placer then
+			return false
+		end
+		local name = placer:get_player_name()
+		if minetest.is_protected(pos, name) then
+			minetest.record_protection_violation(pos, name)
+			--protection probably handles this itself
+			--minetest.remove_node(pos)
+			return true
+		end
+		local net,cp = me.get_connected_network(pos)
+		if not net then
+			return false
+		end
+		if net:get_access_level(name) < access_level.modify then
+			-- prevent placing cables on a network that a player doesn't have access to
+			minetest.remove_node(pos)
+			return true
+		end
+	end,
 	after_destruct = function(pos)
-	 me.send_event(pos,"disconnect")
+		--FIXME: write drives before disconnecting
+		me.send_event(pos,"disconnect")
 	end,
 	me_update = function(pos,_,ev)
 	 if ev then

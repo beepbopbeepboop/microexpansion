@@ -3,6 +3,8 @@ me.networks    = {}
 local networks = me.networks
 local path     = microexpansion.get_module_path("network")
 
+dofile(path.."/constants.lua")
+
 --deprecated: use ItemStack(x) instead
 --[[
 local function split_stack_values(stack)
@@ -110,12 +112,34 @@ end
 function me.get_connected_network(start_pos)
 	for npos,nn in me.connected_nodes(start_pos,true) do
 		if nn == "microexpansion:ctrl" then
-			local network = me.get_network(npos)
+			local source = minetest.get_meta(npos):get_string("source")
+			local network
+			if source == "" then
+				network = me.get_network(npos)
+			else
+				network = me.get_network(vector.from_string(source))
+			end
 			if network then
 				return network,npos
 			end
 		end
 	end
+end
+
+function me.promote_controller(start_pos,net)
+	local promoted = false
+	for npos,nn in me.connected_nodes(start_pos,true) do
+		if nn == "microexpansion:ctrl" and npos ~= start_pos then
+			if promoted then
+				minetest.get_meta(npos):set_string("source", promoted)
+			else
+				promoted = vector.to_string(npos)
+				minetest.get_meta(npos):set_string("source", "")
+				net.controller_pos = npos
+			end
+		end
+	end
+	return promoted and true or false
 end
 
 function me.update_connected_machines(start_pos,event,include_start)
@@ -158,6 +182,7 @@ function me.get_network(pos)
 end
 
 dofile(path.."/ctrl.lua") -- Controller/wires
+dofile(path.."/security.lua") --Security Terminal
 
 -- load networks
 function me.load()

@@ -2,6 +2,7 @@
 
 local me = microexpansion
 local pipeworks_enabled = minetest.get_modpath("pipeworks") and true or false
+local access_level = microexpansion.constants.security.access_levels
 
 -- [me chest] Get formspec
 local function chest_formspec(pos, start_id, listname, page_max, q)
@@ -121,14 +122,53 @@ microexpansion.register_node("term", {
 			update_chest(pos)
 		end
 	end,
+	can_dig = function(pos, player)
+		if not player then
+			return false
+		end
+		local name = player:get_player_name()
+		if minetest.is_protected(pos, name) then
+			minetest.record_protection_violation(pos, name)
+			return false
+		end
+		local net,cp = me.get_connected_network(pos)
+		if not net then
+			return true
+		end
+		return net:get_access_level(name) >= access_level.modify
+	end,
 	after_destruct = function(pos)
    me.send_event(pos,"disconnect")
   end,
+	allow_metadata_inventory_put = function(pos, _, _, stack, player)
+		local network = me.get_connected_network(pos)
+		if network then
+			if network:get_access_level(player) < access_level.interact then
+				return 0
+			end
+		elseif minetest.is_protected(pos, player) then
+			minetest.record_protection_violation(pos, player)
+			return 0
+		end
+		return stack:get_count()
+	end,
   on_metadata_inventory_put = function(pos, listname, _, stack)
     local net = me.get_connected_network(pos)
     local inv = net:get_inventory()
     me.insert_item(stack, inv, "main")
   end,
+	allow_metadata_inventory_take = function(pos,_,_,stack, player)
+		local network = me.get_connected_network(pos)
+		if network then
+			if network:get_access_level(player) < access_level.interact then
+				return 0
+			end
+		elseif minetest.is_protected(pos, player) then
+			minetest.record_protection_violation(pos, player)
+			return 0
+		end
+		return math.min(stack:get_count(),stack:get_stack_max())
+	end,
 	on_metadata_inventory_take = function(pos, listname, _, stack)
 		local net = me.get_connected_network(pos)
 		local inv = net:get_inventory()
@@ -242,6 +282,9 @@ microexpansion.register_node("term", {
 			meta:set_string("inv_name", "main")
 			meta:set_string("formspec", chest_formspec(pos, 1, "main", page_max))
 		elseif fields.tochest then
+			if net:get_access_level(sender) < access_level.interact then
+				return
+			end
 			local pinv = minetest.get_inventory({type="player", name=sender:get_player_name()})
 			net:set_storage_space(pinv:get_size("main"))
 			local space = net:get_item_capacity()

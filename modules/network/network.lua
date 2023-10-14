@@ -1,14 +1,19 @@
 --- Microexpansion network
 -- @type network
 -- @field #table controller_pos the position of the controller
+-- @field #table access a table of players and their respective access levels
+-- @field #number default_access_level the access level of unlisted players
 -- @field #number power_load the power currently provided to the network
 -- @field #number power_storage the power that can be stored for the next tick
 local network = {
+	default_access_level = microexpansion.constants.security.access_levels.view,
 	power_load = 0,
 	power_storage = 0
 }
 local me = microexpansion
 me.network = network
+
+local access_level = microexpansion.constants.security.access_levels
 
 --- construct a new network
 -- @function [parent=#network] new
@@ -70,6 +75,65 @@ function network.adjacent_connected_nodes(pos, include_ctrl)
 	end
 
 	return nodes
+end
+
+function network:get_access_level(player)
+	local name
+	if not player then
+		return self.default_access_level
+	elseif type(player) == "string" then
+		name = player
+	else
+		name = player:get_player_name()
+	end
+	if not self.access then
+		return self.default_access_level
+	end
+	return self.access[name] or self.default_access_level
+end
+
+function network:set_access_level(player, level)
+	local name
+	if not player then
+		self.default_access_level = level
+	elseif type(player) == "string" then
+		name = player
+	else
+		name = player:get_player_name()
+	end
+	if not self.access then
+		self.access = {}
+	end
+	self.access[name] = level
+	self:fallback_access()
+end
+
+function network:fallback_access()
+	local full_access = access_level.full
+	if not self.access then
+		--something must have gone badly wrong
+		me.log("no network access table in fallback method","error")
+		self.access = {}
+	end
+	for _,l in pairs(self.access) do
+		if l == full_access then
+			return
+		end
+	end
+	local meta = minetest.get_meta(self.controller_pos)
+	local owner = meta:get_string("owner")
+	if owner == "" then
+		me.log("ME Network Controller without owner at: " .. vector.to_string(self.controller_pos), "warning")
+	else
+		self.access[owner] = full_access
+	end
+end
+
+function network:list_access()
+	if not self.access then
+		self.access = {}
+	end
+	return self.access
 end
 
 --- provide power to the network
@@ -205,7 +269,10 @@ end
 local function create_inventory(net)
   local invname = net:get_inventory_name()
   net.inv = minetest.create_detached_inventory(invname, {
-    allow_put = function(inv, listname, index, stack)
+    allow_put = function(inv, listname, index, stack, player)
+			if net:get_access_level(player) < access_level.interact then
+				return 0
+			end
       local inside_stack = inv:get_stack(listname, index)
       local stack_name = stack:get_name()
       if minetest.get_item_group(stack_name, "microexpansion_cell") > 0 then
@@ -238,7 +305,10 @@ local function create_inventory(net)
       me.insert_item(stack, inv, listname)
       net:set_storage_space(true)
     end,
-    allow_take = function(_, _, _, stack)
+    allow_take = function(_, _, _, stack, player)
+			if net:get_access_level(player) < access_level.interact then
+				return 0
+			end
       return math.min(stack:get_count(),stack:get_stack_max())
     end,
     on_take = function()
