@@ -353,6 +353,11 @@ function network:load()
   if self.strinv then
     self:load_inventory(self.strinv)
   end
+	--make sure someone has access to the network
+	if not self.access then
+		self.access = {}
+	end
+	self:fallback_access()
 end
 
 function network:serialize()
