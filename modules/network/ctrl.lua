@@ -97,7 +97,7 @@ me.register_node("ctrl", {
 		end
 		if not net then
 			me.log("ME Network Controller without Network","error")
-			return false
+			return true
 		end
 		return net:get_access_level(name) >= access_level.full
 	end,
@@ -129,6 +129,39 @@ me.register_node("ctrl", {
 	machine = {
 		type = "controller",
 	},
+})
+
+minetest.register_lbm({
+	name = "microexpansion:update_network",
+	label = "integrate new ME Network data",
+	nodenames = {"microexpansion:ctrl"},
+	run_at_every_load = true,
+	action = function(pos)
+		local meta = minetest.get_meta(pos)
+		local net,idx = me.get_network(pos)
+		if not meta then
+			me.log("activated controller before metadata was available", "warning")
+			return
+		end
+		local source = meta:get_string("source")
+		if not net then
+			if source == "" then
+				me.log("activated controller without network", "warning")
+				return
+			else
+				net = me.get_network(vector.from_string(source))
+				if not net then
+					me.log("activated controller that is linked to an unloaded controller", "info")
+					return
+				end
+  	  end
+		end
+		if not net.access then
+			me.log("added access table to old network", "action")
+			net.access = {}
+		end
+		net:fallback_access()
+	end
 })
 
 -- [register node] Cable
@@ -173,6 +206,7 @@ me.register_machine("cable", {
 		return net:get_access_level(name) >= access_level.modify
 	end,
 	on_construct = function(pos)
+		--perhaps this needs to be done after the check if it can be placed
 	 me.send_event(pos,"connect")
 	end,
 	after_place_node = function(pos, placer)
@@ -186,6 +220,7 @@ me.register_machine("cable", {
 			--minetest.remove_node(pos)
 			return true
 		end
+		--TODO: prevent connecting multiple networks
 		local net,cp = me.get_connected_network(pos)
 		if not net then
 			return false
