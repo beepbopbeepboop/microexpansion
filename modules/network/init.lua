@@ -2,6 +2,7 @@ local me       = microexpansion
 me.networks    = {}
 local networks = me.networks
 local path     = microexpansion.get_module_path("network")
+local storage  = minetest.get_mod_storage()
 
 dofile(path.."/constants.lua")
 
@@ -186,17 +187,29 @@ dofile(path.."/security.lua") --Security Terminal
 
 -- load networks
 function me.load()
-	local f = io.open(me.worldpath.."/microexpansion_networks", "r")
-	if f then
-		local res = minetest.deserialize(f:read("*all"))
-		f:close()
-		if type(res) == "table" then
-			for _,n in pairs(res) do
-			 local net = me.network.new(n)
-			 net:load()
-			 table.insert(me.networks,net)
-			end
+	local res = storage:get_string("networks")
+	if res == "" then
+		local f = io.open(me.worldpath.."/microexpansion_networks", "r")
+		if f then
+			me.log("loading network data from file","action")
+			res = minetest.deserialize(f:read("*all"))
+			f:close()
+		else
+			me.log("no network data loaded","action")
+			return
 		end
+	else
+		me.log("loading network data from mod storage","action")
+		res = minetest.deserialize(res)
+	end
+	if type(res) == "table" then
+		for _,n in pairs(res) do
+		 local net = me.network.new(n)
+		 net:load()
+		 table.insert(me.networks,net)
+		end
+	else
+		me.log("network data in unexpected format","error")
 	end
 end
 
@@ -209,9 +222,35 @@ function me.save()
   for _,v in pairs(me.networks) do
     table.insert(data,v:serialize())
   end
-	local f = io.open(me.worldpath.."/microexpansion_networks", "w")
-	f:write(minetest.serialize(data))
-	f:close()
+	if storage then
+		me.log("saving network data to mod storage","info")
+		storage:set_string("networks", minetest.serialize(data))
+	else
+		me.log("saving network data to file","info")
+		local f = io.open(me.worldpath.."/microexpansion_networks", "w")
+		f:write(minetest.serialize(data))
+		f:close()
+	end
+end
+
+function me.do_autosave()
+	me.last_autosave = -1
+	minetest.after(1, function()
+		--print("autosaving ME Networks")
+		me.save()
+		me.last_autosave = minetest.get_server_uptime()
+	end)
+end
+
+function me.autosave()
+	--TODO: make max autosave interval settable
+	if not me.last_autosave then
+		me.do_autosave()
+	elseif me.last_autosave == -1 then
+		return
+	elseif minetest.get_server_uptime() - me.last_autosave >= 600 then
+		me.do_autosave()
+	end
 end
 
 -- save on server shutdown

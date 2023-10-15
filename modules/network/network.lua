@@ -106,6 +106,8 @@ function network:set_access_level(player, level)
 	end
 	self.access[name] = level
 	self:fallback_access()
+	-- autosave network data
+	me.autosave()
 end
 
 function network:fallback_access()
@@ -254,6 +256,8 @@ function network:set_storage_space(count,listname)
     needed = needed + csize
     remove_slots(inv,ln,needed,csize)
   end
+	-- autosave network data
+	me.autosave()
 end
 
 function network:update()
