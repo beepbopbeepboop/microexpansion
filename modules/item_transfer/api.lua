@@ -182,7 +182,14 @@ local io_device_base = {
 				else
 					max_allowed = math.min(stack:get_count(), 5)
 				end
-			elseif item ~= "microexpansion:upgrade_bulk" then
+			elseif item == "microexpansion:upgrade_bulk" then
+				local bulk_upgrades = me.count_upgrades(minetest.get_meta(pos):get_inventory()).bulk
+				if bulk_upgrades then
+					max_allowed = math.max(0, math.min(stack:get_count(), 10 - bulk_upgrades))
+				else
+					max_allowed = math.min(stack:get_count(), 10)
+				end
+			else
 				return 0
 			end
 		end
