@@ -28,3 +28,28 @@ me.register_item("machine_casing", {
 		},
 	},
 })
+
+-- [register item] Gold Wire
+me.register_item("gold_wire", {
+	description = "Gold Wire",
+	recipe = {
+		{ 2, {
+				{"default:gold_ingot", "default:stick"},
+				{"default:stick", ""}
+			},
+		},
+	},
+})
+
+-- [register item] Control Unit
+me.register_item("logic_chip", {
+	description = "Control Unit",
+	recipe = {
+		{ 2, {
+				{"microexpansion:gold_wire"},
+				{"microexpansion:quartz_crystal"},
+				{"group:wood"}
+			},
+		},
+	},
+})

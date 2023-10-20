@@ -270,6 +270,26 @@ function network:get_inventory_name()
   return "microexpansion_storage_"..cp.x.."_"..cp.y.."_"..cp.z
 end
 
+function network:get_inventory_space(inv, list)
+	local inv = inv or self:get_inventory()
+	local listname = list or "main"
+	local max_slots = inv:get_size(listname)
+  local max_items = self.capacity_cache
+
+  local slots, items = 0, 0
+  -- Get amount of items in drive
+  for i = 1, max_slots do
+    local dstack = inv:get_stack(listname, i)
+    if dstack:get_name() ~= "" then
+      slots = slots + 1
+      local num = dstack:get_count()
+      if num == 0 then num = 1 end
+      items = items + num
+    end
+  end
+  return math.max(max_items-items,0)
+end
+
 local function create_inventory(net)
   local invname = net:get_inventory_name()
   net.inv = minetest.create_detached_inventory(invname, {

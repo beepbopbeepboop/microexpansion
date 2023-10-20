@@ -177,6 +177,9 @@ microexpansion.register_node("term", {
 	tube = {
     can_insert = function(pos, _, stack) --pos, node, stack, direction
       local net = me.get_connected_network(pos)
+			if not net then
+				return false
+			end
       local inv = net:get_inventory()
       local max_slots = inv:get_size("main")
       local max_items = net.capacity_cache
@@ -197,6 +200,9 @@ microexpansion.register_node("term", {
     end,
     insert_object = function(pos, _, stack)
       local net = me.get_connected_network(pos)
+			if not net then
+				return stack
+			end
       local inv = net:get_inventory()
       me.insert_item(stack, inv, "main")
       net:set_storage_space(true)

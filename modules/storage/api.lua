@@ -47,7 +47,7 @@ function microexpansion.int_to_pagenum(int)
 	return math.floor(microexpansion.int_to_stacks(int) / 32)
 end
 
--- [function] Move items from inv to inv
+--[[ [function] Move items from inv to inv
 function microexpansion.move_inv(inv1, inv2, max)
   if max <= 0 then return end
   local finv, tinv   = inv1.inv, inv2.inv
@@ -81,3 +81,4 @@ function microexpansion.move_inv(inv1, inv2, max)
     end
   end
 end
+]]

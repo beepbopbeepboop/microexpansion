@@ -133,3 +133,43 @@ function microexpansion.update_node(pos,event)
 		def.me_update(pos,node,ev)
 	end
 end
+
+-- [function] Move items from inv to inv
+function microexpansion.move_inv(inv1, inv2, max, filter)
+  if max <= 0 then return end
+  local finv, tinv   = inv1.inv, inv2.inv
+  local fname, tname = inv1.name, inv2.name
+  local huge = inv2.huge
+  local inserted = 0
+
+  for _,v in ipairs(finv:get_list(fname) or {}) do
+    local left = max-inserted
+    if left <= 0 then
+      break;
+    end
+    if not v:is_empty() then
+      if v:get_count() > left then
+        v = v:peek_item(left)
+      end
+      if tinv and tinv:room_for_item(tname, v) and (not filter or not filter(v)) then
+        if huge then
+          microexpansion.insert_item(v, tinv, tname)
+          finv:remove_item(fname, v)
+        else
+					--TODO: continue inserting from the same stack if it is bigger than max
+					if v:get_count() > v:get_stack_max() then
+						v = v:peek_item(v:get_stack_max())
+					end
+          local leftover = tinv:add_item(tname, v)
+          finv:remove_item(fname, v)
+          if leftover and not(leftover:is_empty()) then
+            microexpansion.log("leftover items when transferring inventory","warning")
+            finv:add_item(fname, leftover)
+          end
+        end
+        inserted = inserted + v:get_count()
+      end
+    end
+  end
+  return inserted
+end
