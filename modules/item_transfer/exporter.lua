@@ -23,6 +23,7 @@ local function exporter_timer(pos, elapsed)
 		end
 		local max_count = math.pow(2, upgrades.bulk or 0)
 		microexpansion.move_inv({inv=net:get_inventory(),name="main",huge=true}, {inv=inv,name=list}, max_count, export_filter)
+		--TODO: perhaps call allow_insert and on_insert callbacks
 	end
 	return true
 end
@@ -50,6 +51,12 @@ item_transfer.register_io_device("exporter", {
 	},
 	connect_sides = { "left" },
 	recipe = {
+		{ 1, {
+        {"", "basic_materials:ic", "default:steel_ingot" },
+        {"", "microexpansion:cable", "group:shovel" },
+        {"", "", "default:steel_ingot" },
+      },
+    },
     { 1, {
         {"", "microexpansion:logic_chip", "default:steel_ingot" },
         {"", "microexpansion:cable", "group:shovel" },
@@ -81,4 +88,6 @@ item_transfer.register_io_device("exporter", {
 	end
 })
 
-
+if me.uinv_category_enabled then
+	unified_inventory.add_category_item("storage", "microexpansion:exporter")
+end

@@ -305,3 +305,7 @@ microexpansion.register_node("term", {
 		end
 	end,
 })
+
+if me.uinv_category_enabled then
+	unified_inventory.add_category_item("storage", "microexpansion:term")
+end

@@ -405,3 +405,7 @@ microexpansion.register_node("drive", {
 		me.send_event(pos,"items",{net=network})
 	end,
 })
+
+if me.uinv_category_enabled then
+	unified_inventory.add_category_item("storage", "microexpansion:drive")
+end

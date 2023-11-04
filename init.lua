@@ -11,8 +11,11 @@ microexpansion.gui_bg = "bgcolor[#080808BB;true]background[5,5;1,1;gui_formbg.pn
 microexpansion.gui_slots = "listcolors[#00000069;#5A5A5A;#141318;#30434C;#FFF]"
 
 microexpansion.settings = {
-	huge_stacks = minetest.settings:get_bool("microexpansion_huge_stacks")
+	huge_stacks = minetest.settings:get_bool("microexpansion_huge_stacks"),
+	simple_craft = minetest.settings:get_bool("microexpansion_simple_craft")
 }
+
+microexpansion.uinv_category_enabled = minetest.global_exists("unified_inventory") and unified_inventory.add_category_item and true or false
 
 -- logger
 function microexpansion.log(content, log_type)

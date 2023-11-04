@@ -35,13 +35,13 @@ me.register_node("quartz", {
 	type = "ore",
 	groups = { cracky=3, stone=1 },
 	drop = "microexpansion:quartz_crystal",
-	oredef = {
-		ore_type = "blob",
+	oredef = {{
+		ore_type = "scatter",
 		wherein = "default:stone",
-		clust_scarcity = 4*4*4,
-		clust_num_ores = 4,
-		clust_size = 3,
-		y_min = -3000,
-		y_max = -50,
-	}
+		clust_scarcity = 10*10*10,
+		clust_num_ores = 6,
+		clust_size = 5,
+		y_min = -31000,
+		y_max = -5,
+	}}
 })

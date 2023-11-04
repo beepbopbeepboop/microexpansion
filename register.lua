@@ -5,6 +5,15 @@
 local me = microexpansion
 local power = me.power
 
+if me.uinv_category_enabled and unified_inventory.registered_categories then
+	if not unified_inventory.registered_categories["storage"] then
+		unified_inventory.register_category("storage", {
+			symbol = "default:chest",
+			label = "Storage"
+		})
+	end
+end
+
 -- [function] Register machine
 function me.register_machine(itemstring, def)
 	-- Set after_place_node

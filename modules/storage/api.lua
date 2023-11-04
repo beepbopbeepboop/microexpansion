@@ -2,6 +2,8 @@
 
 local BASENAME = "microexpansion"
 
+--FIXME: either consolidate or forbid crafting with filled cells
+
 -- [function] register cell
 function microexpansion.register_cell(itemstring, def)
 	if not def.inventory_image then
@@ -25,6 +27,10 @@ function microexpansion.register_cell(itemstring, def)
 	-- if recipe, register recipe
 	if def.recipe then
 		microexpansion.register_recipe(BASENAME..":"..itemstring, def.recipe)
+	end
+
+	if microexpansion.uinv_category_enabled then
+		unified_inventory.add_category_item("storage", BASENAME..":"..itemstring)
 	end
 end
 

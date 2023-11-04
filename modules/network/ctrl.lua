@@ -251,3 +251,9 @@ me.register_machine("cable", {
 		type = "conductor",
 	},
 })
+
+if me.uinv_category_enabled then
+	unified_inventory.add_category_item("storage", "microexpansion:ctrl")
+	unified_inventory.add_category_item("storage", "microexpansion:cable")
+end
+

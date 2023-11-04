@@ -23,6 +23,11 @@ me.register_item("upgrade_bulk", {
 	usedfor = "upgrades components to process more at the same time",
 	recipe = {
 		{ 1, {
+				{"basic_materials:gold_wire"},
+				{"microexpansion:upgrade_base"}
+			},
+		},
+		{ 1, {
 				{"microexpansion:gold_wire"},
 				{"microexpansion:upgrade_base"}
 			},
@@ -48,6 +53,11 @@ me.register_item("upgrade_control", {
 	description = "Control Upgrade",
 	usedfor = "allows more fine tuned control over components",
 	recipe = {
+		{ 1, {
+				{"basic_materials:ic"},
+				{"microexpansion:upgrade_base"}
+			},
+		},
 		{ 1, {
 				{"microexpansion:logic_chip"},
 				{"microexpansion:upgrade_base"}

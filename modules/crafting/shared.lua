@@ -1,9 +1,8 @@
--- shared/init.lua
+-- crafting/shared.lua
 
 local me = microexpansion
 
--- This mostly contains items that are used by multiple modules and
--- don't really fit with anything else.
+-- custom items that are used by multiple devices
 
 -- [register item] Steel Infused Obsidian Ingot
 me.register_item("steel_infused_obsidian_ingot", {
@@ -24,31 +23,6 @@ me.register_item("machine_casing", {
 				{"default:steel_ingot", "default:steel_ingot", "default:steel_ingot"},
 				{"default:steel_ingot", "default:copper_ingot", "default:steel_ingot"},
 				{"default:steel_ingot", "default:steel_ingot", "default:steel_ingot"},
-			},
-		},
-	},
-})
-
--- [register item] Gold Wire
-me.register_item("gold_wire", {
-	description = "Gold Wire",
-	recipe = {
-		{ 2, {
-				{"default:gold_ingot", "default:stick"},
-				{"default:stick", ""}
-			},
-		},
-	},
-})
-
--- [register item] Control Unit
-me.register_item("logic_chip", {
-	description = "Control Unit",
-	recipe = {
-		{ 2, {
-				{"microexpansion:gold_wire"},
-				{"microexpansion:quartz_crystal"},
-				{"group:wood"}
 			},
 		},
 	},

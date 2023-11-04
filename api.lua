@@ -26,7 +26,7 @@ function microexpansion.register_oredef(ore, defs)
 	end
 
 	for _,d in ipairs(defs) do
-		d.ore = "microexpansion:"..ore
+		d.ore = ore
     minetest.register_ore(d)
 	end
 end
