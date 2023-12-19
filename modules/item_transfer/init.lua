@@ -4,6 +4,15 @@ local module_path = microexpansion.get_module_path("item_transfer")
 
 microexpansion.require_module("network")
 
+
+-- Iron Ingot Ingredient for MineClone2
+iron_ingot_ingredient = nil
+if minetest.get_modpath("mcl_core") then
+	iron_ingot_ingredient = "mcl_core:iron_ingot"
+else
+	iron_ingot_ingredient = "default:steel_ingot"
+end
+
 -- Load API
 dofile(module_path.."/api.lua")
 

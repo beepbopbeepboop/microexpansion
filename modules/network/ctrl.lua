@@ -4,6 +4,29 @@ local me = microexpansion
 local network = me.network
 local access_level = microexpansion.constants.security.access_levels
 
+local ctrl_recipe = nil
+if minetest.get_modpath("mcl_core") then
+	ctrl_recipe = {
+		{ 1, {
+			{"mcl_core:iron_ingot", "mcl_copper:copper_ingot", "mcl_core:iron_ingot"},
+			{"mcl_core:iron_ingot", "microexpansion:machine_casing", "mcl_core:iron_ingot"},
+			{"mcl_core:iron_ingot", "microexpansion:cable", "mcl_core:iron_ingot"},
+		  },
+		}
+	}
+	
+	
+else
+	ctrl_recipe = {
+		{ 1, {
+			{"default:steel_ingot", "microexpansion:steel_infused_obsidian_ingot", "default:steel_ingot"},
+			{"default:steel_ingot",       "microexpansion:machine_casing",         "default:steel_ingot"},
+			{"default:steel_ingot",             "microexpansion:cable",            "default:steel_ingot"},
+		  },
+		}
+	  }
+end
+
 -- [register node] Controller
 me.register_node("ctrl", {
 	description = "ME Controller",
@@ -15,14 +38,7 @@ me.register_node("ctrl", {
 		"ctrl_sides",
 		"ctrl_sides"
 	},
-	recipe = {
-    { 1, {
-        {"default:steel_ingot", "microexpansion:steel_infused_obsidian_ingot", "default:steel_ingot"},
-        {"default:steel_ingot",       "microexpansion:machine_casing",         "default:steel_ingot"},
-        {"default:steel_ingot",             "microexpansion:cable",            "default:steel_ingot"},
-      },
-    }
-  },
+	recipe = ctrl_recipe,
 	drawtype = "nodebox",
 	paramtype = "light",
 	node_box = {

@@ -52,15 +52,15 @@ item_transfer.register_io_device("exporter", {
 	connect_sides = { "left" },
 	recipe = {
 		{ 1, {
-        {"", "basic_materials:ic", "default:steel_ingot" },
+        {"", "basic_materials:ic", iron_ingot_ingredient },
         {"", "microexpansion:cable", "group:shovel" },
-        {"", "", "default:steel_ingot" },
+        {"", "", iron_ingot_ingredient },
       },
     },
     { 1, {
-        {"", "microexpansion:logic_chip", "default:steel_ingot" },
+        {"", "microexpansion:logic_chip", iron_ingot_ingredient },
         {"", "microexpansion:cable", "group:shovel" },
-        {"", "", "default:steel_ingot" },
+        {"", "", iron_ingot_ingredient },
       },
     }
   },

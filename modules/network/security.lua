@@ -127,6 +127,28 @@ local function update_security(pos,_,ev)
 	meta:set_string("formspec", security_formspec(pos))
 end
 
+local security_recipe = nil
+if minetest.get_modpath("mcl_core") then
+	security_recipe = {
+		{ 1, {
+			{"mcl_core:iron_ingot", "mcl_copper:copper_ingot", "mcl_core:iron_ingot"},
+			{"mcl_core:iron_ingot", "microexpansion:machine_casing", "mcl_core:iron_ingot"},
+			{"mcl_core:iron_ingot", "microexpansion:cable", "mcl_core:iron_ingot"},
+		  },
+		}
+	}
+	
+else
+	security_recipe = {
+		{ 1, {
+			{"default:steel_ingot",   "default:copper_ingot",               "default:steel_ingot"},
+			{"default:steel_ingot", "microexpansion:machine_casing", "default:steel_ingot"},
+			{"default:steel_ingot", "microexpansion:cable",          "default:steel_ingot"},
+		  },
+		}
+	  }
+end
+
 -- [me chest] Register node
 microexpansion.register_node("security", {
 	description = "ME Security Terminal",
@@ -139,14 +161,7 @@ microexpansion.register_node("security", {
 		"chest_side",
 		"security_front",
 	},
-	recipe = {
-    { 1, {
-        {"default:steel_ingot",   "default:copper_ingot",               "default:steel_ingot"},
-        {"default:steel_ingot", "microexpansion:machine_casing", "default:steel_ingot"},
-        {"default:steel_ingot", "microexpansion:cable",          "default:steel_ingot"},
-      },
-    }
-  },
+	recipe = security_recipe,
 	is_ground_content = false,
 	groups = { cracky = 1, me_connect = 1 },
 	paramtype = "light",
