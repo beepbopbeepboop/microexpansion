@@ -27,6 +27,7 @@ function microexpansion.register_oredef(ore, defs)
 
 	for _,d in ipairs(defs) do
 		d.ore = ore
+	minetest.log("action", minetest.serialize(d))
     minetest.register_ore(d)
 	end
 end
@@ -72,6 +73,13 @@ end
 
 -- [function] Register Node
 function microexpansion.register_node(itemstring, def)
+  if minetest.get_modpath("mcl_core") then
+	def._mcl_hardness = def._mcl_hardness or 3
+	def._mcl_blast_resistance = def._mcl_blast_resistance or 3
+	def._mcl_hardness = def._mcl_hardness or 3
+	def._mcl_silk_touch_drop = def._mcl_silk_touch_drop or true
+	def.groups.pickaxey = def.groups.pickaxey or 3
+  end
   -- Check if disabled
   if def.disabled == true then
     return
