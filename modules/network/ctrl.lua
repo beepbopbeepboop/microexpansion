@@ -8,7 +8,7 @@ local ctrl_recipe = nil
 if minetest.get_modpath("mcl_core") then
 	ctrl_recipe = {
 		{ 1, {
-			{"mcl_core:iron_ingot", "mcl_copper:copper_ingot", "mcl_core:iron_ingot"},
+			{"mcl_core:iron_ingot", "microexpansion:steel_infused_obsidian_ingot", "mcl_core:iron_ingot"},
 			{"mcl_core:iron_ingot", "microexpansion:machine_casing", "mcl_core:iron_ingot"},
 			{"mcl_core:iron_ingot", "microexpansion:cable", "mcl_core:iron_ingot"},
 		  },
