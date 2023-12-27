@@ -59,15 +59,15 @@ item_transfer.register_io_device("importer", {
 	connect_sides = { "left" },
 	recipe = {
 		{ 1, {
-        {"", "basic_materials:ic", iron_ingot_ingredient },
+        {"", "basic_materials:ic", microexpansion.iron_ingot_ingredient },
         {"", "microexpansion:cable", "group:hoe" },
-        {"", "", iron_ingot_ingredient },
+        {"", "", microexpansion.iron_ingot_ingredient },
       },
     },
     { 1, {
-        {"", "microexpansion:logic_chip", iron_ingot_ingredient },
+        {"", "microexpansion:logic_chip", microexpansion.iron_ingot_ingredient },
         {"", "microexpansion:cable", "group:hoe" },
-        {"", "", iron_ingot_ingredient },
+        {"", "", microexpansion.iron_ingot_ingredient },
       },
     }
   },

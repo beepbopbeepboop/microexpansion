@@ -11,7 +11,7 @@ me.register_item("upgrade_base", {
 	recipe = {
 		{ 1, {
 				{ "microexpansion:quartz_crystal" },
-				{ iron_ingot_ingredient },
+				{ microexpansion.iron_ingot_ingredient },
 			},
 		},
 	},

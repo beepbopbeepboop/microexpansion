@@ -6,11 +6,11 @@ microexpansion.require_module("network")
 
 
 -- Iron Ingot Ingredient for MineClone2
-iron_ingot_ingredient = nil
+microexpansion.iron_ingot_ingredient = nil
 if minetest.get_modpath("mcl_core") then
-	iron_ingot_ingredient = "mcl_core:iron_ingot"
+	microexpansion.iron_ingot_ingredient = "mcl_core:iron_ingot"
 else
-	iron_ingot_ingredient = "default:steel_ingot"
+	microexpansion.iron_ingot_ingredient = "default:steel_ingot"
 end
 
 -- Load API
