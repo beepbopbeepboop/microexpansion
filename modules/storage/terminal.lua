@@ -82,6 +82,29 @@ local function update_chest(pos,_,ev)
 	meta:set_string("formspec", chest_formspec(pos, 1, "main", page_max))
 end
 
+local term_recipe = nil
+if minetest.get_modpath("mcl_core") then
+term_recipe = {
+    { 1, {
+        {"mcl_core:iron_ingot", "mcl_chests:chest", "mcl_core:iron_ingot"},
+        {"mcl_core:iron_ingot", "microexpansion:machine_casing", "mcl_core:iron_ingot"},
+        {"mcl_core:iron_ingot", "microexpansion:cable", "mcl_core:iron_ingot"},
+      },
+    }
+}
+
+else
+
+term_recipe = {
+    { 1, {
+        {"default:steel_ingot",   "default:chest",               "default:steel_ingot"},
+        {"default:steel_ingot", "microexpansion:machine_casing", "default:steel_ingot"},
+        {"default:steel_ingot", "microexpansion:cable",          "default:steel_ingot"},
+      },
+    }
+  }
+end
+
 -- [me chest] Register node
 microexpansion.register_node("term", {
 	description = "ME Terminal",
@@ -94,14 +117,7 @@ microexpansion.register_node("term", {
 		"chest_side",
 		"chest_front",
 	},
-	recipe = {
-    { 1, {
-        {"default:steel_ingot",   "default:chest",               "default:steel_ingot"},
-        {"default:steel_ingot", "microexpansion:machine_casing", "default:steel_ingot"},
-        {"default:steel_ingot", "microexpansion:cable",          "default:steel_ingot"},
-      },
-    }
-  },
+	recipe = term_recipe,
 	is_ground_content = false,
 	groups = { cracky = 1, me_connect = 1, tubedevice = 1, tubedevice_receiver = 1 },
 	paramtype = "light",

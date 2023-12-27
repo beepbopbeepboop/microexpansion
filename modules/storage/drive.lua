@@ -268,6 +268,26 @@ local function update_drive(pos,_,ev)
   end
 end
 
+if minetest.get_modpath("mcl_core") then
+	drive_recipe = {
+    { 1, {
+    {"mcl_core:iron_ingot", "mcl_chests:chest", "mcl_core:iron_ingot"},
+    {"mcl_core:iron_ingot", "microexpansion:machine_casing", "mcl_core:iron_ingot"},
+    {"mcl_core:iron_ingot", "mcl_chests:chest", "mcl_core:iron_ingot"},
+},
+}}
+
+else
+	drive_recipe = {
+    { 1, {
+        {"default:steel_ingot",   "default:chest",               "default:steel_ingot" },
+        {"default:steel_ingot", "microexpansion:machine_casing", "default:steel_ingot" },
+        {"default:steel_ingot",        "default:chest",          "default:steel_ingot" },
+      },
+    }
+  }
+end
+
 -- [me chest] Register node
 microexpansion.register_node("drive", {
 	description = "ME Drive",
@@ -280,14 +300,7 @@ microexpansion.register_node("drive", {
 		"chest_side",
 		"drive_full",
 	},
-	recipe = {
-    { 1, {
-        {"default:steel_ingot",   "default:chest",               "default:steel_ingot" },
-        {"default:steel_ingot", "microexpansion:machine_casing", "default:steel_ingot" },
-        {"default:steel_ingot",        "default:chest",          "default:steel_ingot" },
-      },
-    }
-  },
+	recipe = drive_recipe,
 	is_ground_content = false,
 	groups = { cracky = 1, me_connect = 1 },
 	paramtype = "light",

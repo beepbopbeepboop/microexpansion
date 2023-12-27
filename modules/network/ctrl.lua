@@ -4,6 +4,17 @@ local me = microexpansion
 local network = me.network
 local access_level = microexpansion.constants.security.access_levels
 
+local ctrl_recipe = nil
+
+ctrl_recipe = {
+	{ 1, {
+		{microexpansion.iron_ingot_ingredient, "microexpansion:steel_infused_obsidian_ingot", microexpansion.iron_ingot_ingredient},
+		{microexpansion.iron_ingot_ingredient, "microexpansion:machine_casing", microexpansion.iron_ingot_ingredient},
+		{microexpansion.iron_ingot_ingredient, "microexpansion:cable", microexpansion.iron_ingot_ingredient},
+		},
+	}
+}
+	
 -- [register node] Controller
 me.register_node("ctrl", {
 	description = "ME Controller",
@@ -15,14 +26,7 @@ me.register_node("ctrl", {
 		"ctrl_sides",
 		"ctrl_sides"
 	},
-	recipe = {
-    { 1, {
-        {"default:steel_ingot", "microexpansion:steel_infused_obsidian_ingot", "default:steel_ingot"},
-        {"default:steel_ingot",       "microexpansion:machine_casing",         "default:steel_ingot"},
-        {"default:steel_ingot",             "microexpansion:cable",            "default:steel_ingot"},
-      },
-    }
-  },
+	recipe = ctrl_recipe,
 	drawtype = "nodebox",
 	paramtype = "light",
 	node_box = {

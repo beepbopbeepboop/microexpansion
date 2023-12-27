@@ -2,6 +2,33 @@
 
 --TODO: use storagecomp for crafting
 
+if minetest.get_modpath("mcl_core") then
+microexpansion.register_cell("cell_1k", {
+    description = "1k ME Storage Cell",
+    capacity = 1000,
+    recipe = {
+        { 1, {
+            {"moreores:tin_ingot", "mcl_copper:copper_ingot", "moreores:tin_ingot"},
+            {"mcl_copper:copper_ingot", "microexpansion:steel_infused_obsidian_ingot", "mcl_copper:copper_ingot"},
+            {"moreores:tin_ingot", "mcl_copper:copper_ingot", "moreores:tin_ingot"}
+        }},
+    }
+})
+
+microexpansion.register_cell("cell_2k", {
+    description = "2k ME Storage Cell",
+    capacity = 2000,
+    recipe = {
+        { 1, {
+            {"mcl_copper:copper_ingot", "mcl_core:iron_ingot", "mcl_copper:copper_ingot"},
+            {"mcl_core:iron_ingot", "mcl_core:obsidian", "mcl_core:iron_ingot"},
+            {"mcl_copper:copper_ingot", "mcl_core:iron_ingot", "mcl_copper:copper_ingot"}
+        }},
+        { 1, "shapeless", {"microexpansion:cell_1k", "microexpansion:cell_1k"}}
+    },
+})
+else
+
 -- [drive] 8k
 microexpansion.register_cell("cell_1k", {
 	description = "1k ME Storage Cell",
@@ -30,6 +57,8 @@ microexpansion.register_cell("cell_2k", {
     { 1, "shapeless", {"microexpansion:cell_1k","microexpansion:cell_1k"}}
   },
 })
+
+end
 
 -- [drive] 16k
 microexpansion.register_cell("cell_4k", {
