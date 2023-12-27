@@ -76,17 +76,17 @@ local function set_drive_controller(dpos,setd,cpos,i)
 end
 
 local function write_to_cell(cell, items, item_count)
-	local size = microexpansion.get_cell_size(cell:get_name())
-	local item_meta = cell:get_meta()
-	--print(dump2(items,"cell_items"))
-	item_meta:set_string("items", minetest.serialize(items))
-	local base_desc = minetest.registered_craftitems[cell:get_name()].microexpansion.base_desc
-	-- Calculate Percentage
-	local percent = math.floor(item_count / size * 100)
-	-- Update description
-	item_meta:set_string("description", base_desc.."\n"..
-		minetest.colorize("grey", tostring(item_count).."/"..tostring(size).." Items ("..tostring(percent).."%)"))
-	return cell
+  local size = microexpansion.get_cell_size(cell:get_name())
+  local item_meta = cell:get_meta()
+  --print(dump2(items,"cell_items"))
+  item_meta:set_string("items", minetest.serialize(items))
+  local base_desc = minetest.registered_craftitems[cell:get_name()].microexpansion.base_desc
+  -- Calculate Percentage
+  local percent = math.floor(item_count / size * 100)
+  -- Update description
+  item_meta:set_string("description", base_desc.."\n"..
+    minetest.colorize("grey", tostring(item_count).."/"..tostring(size).." Items ("..tostring(percent).."%)"))
+  return cell
 end
 
 local function write_drive_cells(pos,network)
@@ -269,7 +269,7 @@ local function update_drive(pos,_,ev)
 end
 
 if minetest.get_modpath("mcl_core") then
-	drive_recipe = {
+  drive_recipe = {
     { 1, {
     {"mcl_core:iron_ingot", "mcl_chests:chest", "mcl_core:iron_ingot"},
     {"mcl_core:iron_ingot", "microexpansion:machine_casing", "mcl_core:iron_ingot"},
@@ -278,7 +278,7 @@ if minetest.get_modpath("mcl_core") then
 }}
 
 else
-	drive_recipe = {
+  drive_recipe = {
     { 1, {
         {"default:steel_ingot",   "default:chest",               "default:steel_ingot" },
         {"default:steel_ingot", "microexpansion:machine_casing", "default:steel_ingot" },
@@ -290,135 +290,135 @@ end
 
 -- [me chest] Register node
 microexpansion.register_node("drive", {
-	description = "ME Drive",
-	usedfor = "Stores items into ME storage cells",
-	tiles = {
-		"chest_top",
-		"chest_top",
-		"chest_side",
-		"chest_side",
-		"chest_side",
-		"drive_full",
-	},
-	recipe = drive_recipe,
-	is_ground_content = false,
-	groups = { cracky = 1, me_connect = 1 },
-	paramtype = "light",
-	paramtype2 = "facedir",
-	me_update = update_drive,
-	on_construct = function(pos)
-		local meta = minetest.get_meta(pos)
-		meta:set_string("formspec",
-			"size[9,9.5]"..
-			microexpansion.gui_bg ..
-			microexpansion.gui_slots ..
-		[[
-			label[0,-0.23;ME Drive]
-			list[context;main;0,0.3;8,4]
-			list[current_player;main;0,5.5;8,1;]
-			list[current_player;main;0,6.73;8,3;8]
-			listring[current_name;main]
-			listring[current_player;main]
-			field_close_on_enter[filter;false]
-		]])
-		local inv = meta:get_inventory()
-		inv:set_size("main", 10)
-		me.send_event(pos,"connect")
-	end,
-	can_dig = function(pos, player)
-		if not player then
-			return false
-		end
-		local name = player:get_player_name()
-		if minetest.is_protected(pos, name) then
-			minetest.record_protection_violation(pos, name)
-			return false
-		end
-		local net,cp = me.get_connected_network(pos)
-		if not net then
-			return true
-		end
-		if net:get_access_level(name) < access_level.modify then
-			return false
-		end
-		local meta = minetest.get_meta(pos)
-		local inv = meta:get_inventory()
-		return inv:is_empty("main")
-	end,
-	after_destruct = function(pos)
+  description = "ME Drive",
+  usedfor = "Stores items into ME storage cells",
+  tiles = {
+    "chest_top",
+    "chest_top",
+    "chest_side",
+    "chest_side",
+    "chest_side",
+    "drive_full",
+  },
+  recipe = drive_recipe,
+  is_ground_content = false,
+  groups = { cracky = 1, me_connect = 1 },
+  paramtype = "light",
+  paramtype2 = "facedir",
+  me_update = update_drive,
+  on_construct = function(pos)
+    local meta = minetest.get_meta(pos)
+    meta:set_string("formspec",
+      "size[9,9.5]"..
+      microexpansion.gui_bg ..
+      microexpansion.gui_slots ..
+    [[
+      label[0,-0.23;ME Drive]
+      list[context;main;0,0.3;8,4]
+      list[current_player;main;0,5.5;8,1;]
+      list[current_player;main;0,6.73;8,3;8]
+      listring[current_name;main]
+      listring[current_player;main]
+      field_close_on_enter[filter;false]
+    ]])
+    local inv = meta:get_inventory()
+    inv:set_size("main", 10)
+    me.send_event(pos,"connect")
+  end,
+  can_dig = function(pos, player)
+    if not player then
+      return false
+    end
+    local name = player:get_player_name()
+    if minetest.is_protected(pos, name) then
+      minetest.record_protection_violation(pos, name)
+      return false
+    end
+    local net,cp = me.get_connected_network(pos)
+    if not net then
+      return true
+    end
+    if net:get_access_level(name) < access_level.modify then
+      return false
+    end
+    local meta = minetest.get_meta(pos)
+    local inv = meta:get_inventory()
+    return inv:is_empty("main")
+  end,
+  after_destruct = function(pos)
    me.send_event(pos,"disconnect")
   end,
-	allow_metadata_inventory_put = function(pos, _, _, stack, player)
-		local network = me.get_connected_network(pos)
-		if network then
-			if network:get_access_level(player) < access_level.interact then
-				return 0
-			end
-		elseif minetest.is_protected(pos, player) then
-			minetest.record_protection_violation(pos, player)
-			return 0
-		end
-		if minetest.get_item_group(stack:get_name(), "microexpansion_cell") == 0 then
-			return 0
-		else
-			return 1
-		end
-	end,
-	on_metadata_inventory_put = function(pos, _, _, stack)
-		me.send_event(pos,"item_cap")
-		local network = me.get_connected_network(pos)
-		if network == nil then
-			return
-		end
-		local ctrl_inv = network:get_inventory()
-		local items = minetest.deserialize(stack:get_meta():get_string("items"))
-		if items == nil then
-			print("no items")
-			me.send_event(pos,"items",{net=network})
-			return
-		end
-		network:set_storage_space(#items)
-		for _,s in pairs(items) do
-			me.insert_item(s, ctrl_inv, "main")
-		end
-		me.send_event(pos,"items",{net=network})
-	end,
-	allow_metadata_inventory_take = function(pos,_,_,stack, player) --args: pos, listname, index, stack, player
-		local network = me.get_connected_network(pos)
-		if network then
-			write_drive_cells(pos,network)
-			if network:get_access_level(player) < access_level.interact then
-				return 0
-			end
-		elseif minetest.is_protected(pos, player) then
-			minetest.record_protection_violation(pos, player)
-			return 0
-		end
-		return stack:get_count()
-	end,
-	on_metadata_inventory_take = function(pos, _, _, stack)
-		local network = me.get_connected_network(pos)
-		if network == nil then
-			return
-		end
-		me.send_event(pos,"item_cap",{net=network})
-		local ctrl_inv = network:get_inventory()
-		local items = minetest.deserialize(stack:get_meta():get_string("items"))
-		if items == nil then
-		  network:update()
-			return
-		end
-		for _,ostack in pairs(items) do
-			--this returns 99 (max count) even if it removes more
-			ctrl_inv:remove_item("main", ostack)
-		end
-		--print(stack:to_string())
+  allow_metadata_inventory_put = function(pos, _, _, stack, player)
+    local network = me.get_connected_network(pos)
+    if network then
+      if network:get_access_level(player) < access_level.interact then
+        return 0
+      end
+    elseif minetest.is_protected(pos, player) then
+      minetest.record_protection_violation(pos, player)
+      return 0
+    end
+    if minetest.get_item_group(stack:get_name(), "microexpansion_cell") == 0 then
+      return 0
+    else
+      return 1
+    end
+  end,
+  on_metadata_inventory_put = function(pos, _, _, stack)
+    me.send_event(pos,"item_cap")
+    local network = me.get_connected_network(pos)
+    if network == nil then
+      return
+    end
+    local ctrl_inv = network:get_inventory()
+    local items = minetest.deserialize(stack:get_meta():get_string("items"))
+    if items == nil then
+      print("no items")
+      me.send_event(pos,"items",{net=network})
+      return
+    end
+    network:set_storage_space(#items)
+    for _,s in pairs(items) do
+      me.insert_item(s, ctrl_inv, "main")
+    end
+    me.send_event(pos,"items",{net=network})
+  end,
+  allow_metadata_inventory_take = function(pos,_,_,stack, player) --args: pos, listname, index, stack, player
+    local network = me.get_connected_network(pos)
+    if network then
+      write_drive_cells(pos,network)
+      if network:get_access_level(player) < access_level.interact then
+        return 0
+      end
+    elseif minetest.is_protected(pos, player) then
+      minetest.record_protection_violation(pos, player)
+      return 0
+    end
+    return stack:get_count()
+  end,
+  on_metadata_inventory_take = function(pos, _, _, stack)
+    local network = me.get_connected_network(pos)
+    if network == nil then
+      return
+    end
+    me.send_event(pos,"item_cap",{net=network})
+    local ctrl_inv = network:get_inventory()
+    local items = minetest.deserialize(stack:get_meta():get_string("items"))
+    if items == nil then
+      network:update()
+      return
+    end
+    for _,ostack in pairs(items) do
+      --this returns 99 (max count) even if it removes more
+      ctrl_inv:remove_item("main", ostack)
+    end
+    --print(stack:to_string())
 
     network:update()
-		me.send_event(pos,"items",{net=network})
-	end,
+    me.send_event(pos,"items",{net=network})
+  end,
 })
 
 if me.uinv_category_enabled then
-	unified_inventory.add_category_item("storage", "microexpansion:drive")
+  unified_inventory.add_category_item("storage", "microexpansion:drive")
 end
