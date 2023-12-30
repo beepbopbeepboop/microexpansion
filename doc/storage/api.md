@@ -22,8 +22,8 @@ __Usage:__ `microexpansion.int_to_pagenum(int)`
 
 Calculates the approximate number of pages from the integer provided which should represent the total number of items.
 
-#### `move_inv(inv1, inv2)`
-__Usage:__ `microexpansion.move_inv(<from inventory (userdata)>, <to inventory (userdata)>)`
+#### `move_inv(net, inv1, inv2)`
+__Usage:__ `microexpansion.move_inv(net, <from inventory (userdata)>, <to inventory (userdata)>)`
 
 Moves all the contents of one inventory (`inv1`) to another inventory (`inv2`).
 
