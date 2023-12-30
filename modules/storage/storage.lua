@@ -2,7 +2,7 @@
 
 --TODO: use storagecomp for crafting
 
--- [drive] 8k
+-- [drive] 1k
 microexpansion.register_cell("cell_1k", {
 	description = "1k ME Storage Cell",
 	capacity = 1000,
@@ -16,7 +16,7 @@ microexpansion.register_cell("cell_1k", {
   },
 })
 
--- [drive] 8k
+-- [drive] 2k
 microexpansion.register_cell("cell_2k", {
 	description = "2k ME Storage Cell",
 	capacity = 2000,
@@ -31,7 +31,7 @@ microexpansion.register_cell("cell_2k", {
   },
 })
 
--- [drive] 16k
+-- [drive] 4k
 microexpansion.register_cell("cell_4k", {
 	description = "4k ME Storage Cell",
 	capacity = 4000,
@@ -44,7 +44,7 @@ microexpansion.register_cell("cell_4k", {
   },
 })
 
--- [drive] 16k
+-- [drive] 8k
 microexpansion.register_cell("cell_8k", {
 	description = "8k ME Storage Cell",
 	capacity = 8000,
@@ -53,7 +53,7 @@ microexpansion.register_cell("cell_8k", {
 	},
 })
 
--- [drive] 32k
+-- [drive] 16k
 microexpansion.register_cell("cell_16k", {
 	description = "16k ME Storage Cell",
 	capacity = 16000,

@@ -48,7 +48,7 @@ function microexpansion.int_to_pagenum(int)
 end
 
 -- [function] Move items from inv to inv
-function microexpansion.move_inv(inv1, inv2, max)
+function microexpansion.move_inv(net, inv1, inv2, max)
   if max <= 0 then return end
   local finv, tinv   = inv1.inv, inv2.inv
   local fname, tname = inv1.name, inv2.name
@@ -66,14 +66,14 @@ function microexpansion.move_inv(inv1, inv2, max)
       end
       if tinv and tinv:room_for_item(tname, v) then
         if huge then
-          microexpansion.insert_item(v, tinv, tname)
+          microexpansion.insert_item(v, net, tinv, tname)
           finv:remove_item(fname, v)
         else
-          local leftover = tinv:add_item(tname, v)
+          local leftovers = tinv:add_item(tname, v)
           finv:remove_item(fname, v)
-          if leftover and not(leftover:is_empty()) then
-            microexpansion.log("leftover items when transferring inventory","warning")
-            finv:add_item(fname, leftover)
+          if leftovers and not leftovers:is_empty() then
+            microexpansion.log("leftover items when transferring inventory", "warning")
+            finv:add_item(fname, leftovers)
           end
         end
         inserted = inserted + v:get_count()
