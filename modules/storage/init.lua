@@ -14,6 +14,7 @@ dofile(module_path.."/storage.lua")
 dofile(module_path.."/drive.lua")
 dofile(module_path.."/terminal.lua")
 dofile(module_path.."/cterminal.lua")
+dofile(module_path.."/cmonitor.lua")
 dofile(module_path.."/interface.lua")
 local drawers_enabled = minetest.get_modpath("drawers") and true or false
 if drawers_enabled then

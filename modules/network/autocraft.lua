@@ -399,6 +399,7 @@ function me.autocraft(autocrafterCache, cpos, net, linv, inv, count)
   end
   if net.autocrafters[name] or net.process[name] then
     me.log("using pipeworks autocrafter", "error")
+    me.ac_status = "using pipeworks autocrafter\n"
     local sink = function(stack)
       local leftovers = me.insert_item(stack, net, inv, "main")
       net:set_storage_space(true)
@@ -408,8 +409,10 @@ function me.autocraft(autocrafterCache, cpos, net, linv, inv, count)
     local built, step_time = build(net, cpos, inv, name, count*craft_count, stack, sink, start_time)
     if built then
       me.log("crafting "..stack:get_count().." "..stack:get_name().." in "..step_time.." seconds", "error")
+      me.ac_status = me.ac_status .. "Crafting "..count.." "..name.." in "..step_time.." seconds.\n"
     else
       me.log("can't craft "..stack:get_count().." "..stack:get_name(), "error")
+      me.ac_status = me.ac_status .. "Can't craft "..count.." "..name.."."
     end
     return
   end
