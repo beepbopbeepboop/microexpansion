@@ -122,8 +122,12 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
     if dat.ostack:get_name() ~= name then
       -- invalidate it
       net.autocrafters[name][dat.apos] = nil
-      -- me.log("invalidating autocrafter", "error")
+      -- me.log("invalidating autocrafter for "..name, "error")
       return
+    end
+    -- Consider looking up the recipe and finding the replacements that way.
+    if name == "technic:copper_coil" or name == "technic:control_logic_unit" then
+      second_output = ItemStack("basic_materials:empty_spool 999")
     end
   else
     me.log("can't craft a "..name, "error")
@@ -182,6 +186,7 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
       local grabbed = me.remove_item(net, inv, "main", istack)
       if grabbed then
         me.log("ac grabbed "..name, "error")
+	me.ac_status = me.ac_status .. "Grabbed "..count.." "..name..".\n"
 	local slot = inv:get_size("ac")+1
 	inv:set_size("ac", slot)
 	inv:set_stack("ac", slot, grabbed)
@@ -200,12 +205,14 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
     else
       -- Try and autocraft it
       me.log("AC: recursive crafting "..count.." "..istack:get_count(), "error")
+      me.ac_status = me.ac_status .. "Need to craft "..count.." "..name..".\n"
       local built, step_time = build(net, cpos, inv, name, count, istack, dat.isink, time)
       if built then
 	hasit = true
 	next_time = math.max(next_time, time + step_time)
       else
         me.log("can't craft "..istack:get_count().." "..istack:get_name(), "error")
+	me.ac_status = me.ac_status .. "Can't craft "..count.." "..name..".\n"
       end
     end
     replace = replace and hasit
@@ -277,12 +284,14 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
 	if dst_stack:get_count() ~= stack:get_count() then
           me.log("wow, missing items that should have been crafted "..stack:get_name(), "error")
 	  -- me.log("saw "..dst_stack:get_count().." items instead of "..stack:get_count().." items", "error")
+	  me.ac_status = me.ac_status .. "Missing "..(stack:get_count()-dst_stack:get_count()).." "..name..", only made "..dst_stack:get_count()..".\n"
 	end
 	if not dst_stack:is_empty() then
 	  me.log("TIMER: inserting "..dst_stack:get_count().." "..dst_stack:get_name(), "error")
 	  local leftovers = sink(dst_stack)
 	  if leftovers and not leftovers:is_empty() then
 	    me.log("autocrafter overflow, backpressuring", "error")
+	    me.ac_status = me.ac_status .. "Backpressure of "..name..".\n"
 	    -- If any don't fit, back pressure on the crafter, we don't
 	    -- mean to do this, and want to chunk the crafting items smaller
 	    dat.rinv:add_item("dst", leftovers)
@@ -299,6 +308,7 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
 	    net:set_storage_space(true)
 	    if leftovers and not leftovers:is_empty() then
 	      me.log("autocrafter overflow, backpressuring", "error")
+	      me.ac_status = me.ac_status .. "Backpressure of "..name..".\n"
 	      -- If any don't fit, back pressure on the crafter, we don't
 	      -- mean to do this, and want to chunk the crafting items smaller
 	      dat.rinv:add_item("dst", leftovers)
@@ -308,9 +318,10 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
 	if second_output then
 	  local second = dat.rinv:remove_item("dst", second_output)
 	  if second and not second:is_empty() then
-	    local leftovers = sink(second)
+	    local leftovers = me.insert_item(second, net, inv, "main")
 	    if leftovers and not leftovers:is_empty() then
 	      me.log("autocrafter overflow, backpressuring", "error")
+	      me.ac_status = me.ac_status .. "Backpressure of "..name..".\n"
 	      -- If any don't fit, back pressure on the crafter, we don't
 	      -- mean to do this, and want to chunk the crafting items smaller
 	      dat.rinv:add_item("dst", leftovers)
@@ -412,7 +423,7 @@ function me.autocraft(autocrafterCache, cpos, net, linv, inv, count)
       me.ac_status = me.ac_status .. "Crafting "..count.." "..name.." in "..step_time.." seconds.\n"
     else
       me.log("can't craft "..stack:get_count().." "..stack:get_name(), "error")
-      me.ac_status = me.ac_status .. "Can't craft "..count.." "..name.."."
+      me.ac_status = me.ac_status .. "Can't craft "..count.." "..name..".\n"
     end
     return
   end

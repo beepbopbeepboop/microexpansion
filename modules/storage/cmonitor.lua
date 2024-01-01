@@ -16,7 +16,7 @@ local function chest_formspec(pos, start_id, listname, page_max, q)
     if listname and (inv:get_size(listname) > 0 or net:get_item_capacity() > 0) then
       local ctrlinvname = net:get_inventory_name()
       list = "list[detached:"..ctrlinvname..";"
-	.."ac;0,0.3;8,4;" .. (start_id - 1) .. "]"
+	.. listname .. ";0,0.3;4,4;" .. (start_id - 1) .. "]"
       if minetest.get_modpath("i3") then
 	list = list .. [[
 	  list[current_player;main;0,8.5;9,4;]
@@ -36,18 +36,18 @@ local function chest_formspec(pos, start_id, listname, page_max, q)
         ((net.pending and "running " .. #net.pending .. " steps\n") or "idle\n")
       status = status .. (me.ac_status or "")
       buttons = [[
-	button[5.4,4.35;0.8,0.9;prev;<]
-	button[7.25,4.35;0.8,0.9;next;>]
+	button[0.8,5.1;0.8,0.9;prev;<]
+	button[2.65,5.1;0.8,0.9;next;>]
 	tooltip[prev;Previous]
 	tooltip[next;Next]
 	field[0.29,4.6;2.2,1;filter;;]]..query..[[]
 	button[2.1,4.5;0.8,0.5;search;?]
 	button[2.75,4.5;1.6,0.5;refresh;Refresh]
-	button[4.35,4.5;0.8,0.5;clear;X]
+	button[0,5.28;0.8,0.5;clear;X]
 	tooltip[search;Search]
 	tooltip[refresh;Refresh]
 	tooltip[clear;Reset]
-	textarea[0.29,5.7;10,10;;]] .. status .. ";]"
+	textarea[4.75,0;4.65,12.5;;]] .. status .. ";]"
     else
       list = "label[3,2;" .. minetest.colorize("blue", "Crafter is idle") .. "]"
     end
@@ -55,7 +55,7 @@ local function chest_formspec(pos, start_id, listname, page_max, q)
     list = "label[3,2;" .. minetest.colorize("red", "No connected network!") .. "]"
   end
   if page_max then
-    page_number = "label[6.15,4.5;" .. math.floor((start_id / 32)) + 1 ..
+    page_number = "label[1.55,5.25;" .. math.floor((start_id / 16)) + 1 ..
       "/" .. page_max .."]"
   end
 
@@ -84,7 +84,7 @@ local function update_chest(pos,_,ev)
     return
   end
   local inv = net:get_inventory()
-  local page_max = math.floor(inv:get_size("ac") / 32) + 1
+  local page_max = math.floor(inv:get_size("ac") / 16) + 1
 
   meta:set_string("inv_name", "ac")
   meta:set_string("formspec", chest_formspec(pos, 1, "ac", page_max))
@@ -205,22 +205,22 @@ me.register_node("cmonitor", {
       inv = own_inv
       assert(inv,"no own inv")
     end
-    local page_max = math.floor(inv:get_size(inv_name) / 32) + 1
+    local page_max = math.floor(inv:get_size(inv_name) / 16) + 1
     if inv_name == "none" then
       return
     end
     if fields.next then
-      if page + 32 > inv:get_size(inv_name) then
+      if page + 16 > inv:get_size(inv_name) then
 	return
       end
-      meta:set_int("page", page + 32)
-      meta:set_string("formspec", chest_formspec(pos, page + 32, inv_name, page_max))
+      meta:set_int("page", page + 16)
+      meta:set_string("formspec", chest_formspec(pos, page + 16, inv_name, page_max))
     elseif fields.prev then
-      if page - 32 < 1 then
+      if page - 16 < 1 then
 	return
       end
-      meta:set_int("page", page - 32)
-      meta:set_string("formspec", chest_formspec(pos, page - 32, inv_name, page_max))
+      meta:set_int("page", page - 16)
+      meta:set_string("formspec", chest_formspec(pos, page - 16, inv_name, page_max))
     elseif fields.search or fields.key_enter_field == "filter" then
       own_inv:set_size("search", 0)
       if fields.filter == "" then
