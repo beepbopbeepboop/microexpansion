@@ -246,7 +246,7 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
     -- we can put any leftovers back into the main inventory.
     -- Even this might be too soon, if we have multiple independent crafts going, we
     -- need the last one.
-    if previous_ac_size == 0 then
+    if previous_ac_size == 0 and false then
       for i = 1,inv:get_size("ac") do
         local stack = inv:get_stack("ac", i)
 	if stack:get_count() ~= 0 then
