@@ -284,7 +284,9 @@ local function create_inventory(net)
     allow_put = function(inv, listname, index, stack)
       local inside_stack = inv:get_stack(listname, index)
       local stack_name = stack:get_name()
-      if minetest.get_item_group(stack_name, "microexpansion_cell") > 0 then
+      if minetest.get_item_group(stack_name, "microexpansion_cell") > 0 and
+        stack:get_meta():get_string("items") ~= "" and
+        stack:get_meta():get_string("items") ~= "return {}" then
 	return 0
       end
       -- improve performance by skipping unnessecary calls
