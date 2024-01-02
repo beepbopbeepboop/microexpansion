@@ -15,8 +15,12 @@ local function chest_formspec(pos, start_id, listname, page_max, q)
     local inv = net:get_inventory()
     if listname and (inv:get_size(listname) > 0 or net:get_item_capacity() > 0) then
       local ctrlinvname = net:get_inventory_name()
-      list = "list[detached:"..ctrlinvname..";"
-	.. listname .. ";0,0.3;4,4;" .. (start_id - 1) .. "]"
+      if listname == "ac" then
+	list = "list[detached:"..ctrlinvname..";"
+	  .. listname .. ";0,0.3;4,4;" .. (start_id - 1) .. "]"
+      else
+	list = "list[context;" .. listname .. ";0,0.3;4,4;" .. (start_id - 1) .. "]"
+      end
       if minetest.get_modpath("i3") then
 	list = list .. [[
 	  list[current_player;main;0,8.5;9,4;]
@@ -47,7 +51,7 @@ local function chest_formspec(pos, start_id, listname, page_max, q)
 	tooltip[search;Search]
 	tooltip[refresh;Refresh]
 	tooltip[clear;Reset]
-	textarea[4.75,0;4.65,12.5;;]] .. status .. ";]"
+	textarea[4.75,0;4.65,8;;]] .. status .. ";]"
     else
       list = "label[3,2;" .. minetest.colorize("blue", "Crafter is idle") .. "]"
     end
@@ -229,8 +233,10 @@ me.register_node("cmonitor", {
 	meta:set_string("formspec", chest_formspec(pos, 1, "ac", page_max))
       else
 	local tab = {}
+	me.log("SEARCH: ac size is "..ctrl_inv:get_size("ac").." and searching for "..fields.filter, "error")
 	for i = 1, ctrl_inv:get_size("ac") do
 	  local match = ctrl_inv:get_stack("ac", i):get_name():find(fields.filter)
+	  me.log("SEARCH: "..ctrl_inv:get_stack("ac", i):get_name().." "..((match and "true") or "false"), "error")
 	  if match then
 	    tab[#tab + 1] = ctrl_inv:get_stack("ac", i)
 	  end
@@ -241,9 +247,10 @@ me.register_node("cmonitor", {
 	meta:set_string("formspec", chest_formspec(pos, 1, "search", page_max, fields.filter))
       end
     elseif fields.refresh then
-      meta:set_string("formspec", chest_formspec(pos, 1, inv_name, page_max))
+      meta:set_string("formspec", chest_formspec(pos, page, inv_name, page_max))
     elseif fields.clear then
-      own_inv:set_size("ac", 0)
+      own_inv:set_size("search", 0)
+      ctrl_inv:set_size("ac", 16)
       meta:set_int("page", 1)
       meta:set_string("inv_name", "ac")
       net.pending = nil
