@@ -79,6 +79,7 @@ function me.loan.bump_loan(net, inv, loan_slot, remaining, addition_real_loaned)
       me.log("LOAN: bump_loan to "..lstack:get_count(), "error")
       me.loan.set_stack(net, inv, loan_slot, lstack)
       -- me.log("COUNTS: "..minetest.serialize(net.counts), "error")
+      -- TODO: If we have a single item on loan (1k cell) and we remove it from chest and insert into me, crash
       net.counts[lstack:get_name()] = net.counts[lstack:get_name()] + spare
       me.log("COUNT: bump_loan loan now to "..net.counts[lstack:get_name()].." "..lstack:get_name()..", "..spare.." more", "error")
       me.log("LOAN: adril "..addition_real_loaned.." loan "..prev_lstack_count.." and adjustment(spare) "..spare, "error")
