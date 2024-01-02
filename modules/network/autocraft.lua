@@ -210,6 +210,7 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
       if built then
 	hasit = true
 	next_time = math.max(next_time, time + step_time)
+	me.ac_status = me.ac_status .. "Craft "..count.." "..name.." in "..step_time.." seconds.\n"
       else
         me.log("can't craft "..istack:get_count().." "..istack:get_name(), "error")
 	me.ac_status = me.ac_status .. "Can't craft "..count.." "..name..".\n"
@@ -420,10 +421,10 @@ function me.autocraft(autocrafterCache, cpos, net, linv, inv, count)
     local built, step_time = build(net, cpos, inv, name, count*craft_count, stack, sink, start_time)
     if built then
       me.log("crafting "..stack:get_count().." "..stack:get_name().." in "..step_time.." seconds", "error")
-      me.ac_status = me.ac_status .. "Crafting "..count.." "..name.." in "..step_time.." seconds.\n"
+      me.ac_status = me.ac_status .. "Crafting "..(count*craft_count).." "..name.." in "..step_time.." seconds.\n"
     else
       me.log("can't craft "..stack:get_count().." "..stack:get_name(), "error")
-      me.ac_status = me.ac_status .. "Can't craft "..count.." "..name..".\n"
+      me.ac_status = me.ac_status .. "Can't craft "..(count*craft_count).." "..name..".\n"
     end
     return
   end
