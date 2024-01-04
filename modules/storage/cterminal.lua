@@ -295,6 +295,12 @@ me.block_to_typename_map = {
 -- default wiring
 me.register_typename("default:furnace", "cooking")
 
+-- These must be called after the true name of the machine is defined.
+function me.register_machine_alias(alias, name)
+  me.block_to_typename_map[alias] = me.block_to_typename_map[name]
+  me.set_speed(alias, me.speed[name])
+end
+
 function me.get_recipe(typename, inputs)
   return technic.get_recipe(typename, inputs)
 end

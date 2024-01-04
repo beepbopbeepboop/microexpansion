@@ -100,6 +100,25 @@ me.register_typename("technic:hv_compressor", "compressing")
 me.register_typename("technic:mv_centrifuge", "separating")
 me.register_typename("technic:mv_freezer", "freezing")
 
+-- We need active nodes defined as well, as the recipe system doesn't otherwise have
+-- recipes for them.
+me.register_machine_alias("technic:electric_furnace_active", "technic:electric_furnace")
+me.register_machine_alias("technic:mv_electric_furnace_active", "technic:mv_electric_furnace")
+me.register_machine_alias("technic:hv_electric_furnace_active", "technic:hv_electric_furnace")
+me.register_machine_alias("technic:lv_grinder_active", "technic:lv_grinder")
+me.register_machine_alias("technic:mv_grinder_active", "technic:mv_grinder")
+me.register_machine_alias("technic:hv_grinder_active", "technic:hv_grinder")
+me.register_machine_alias("technic:coal_alloy_furnace_active", "technic:coal_alloy_furnace")
+me.register_machine_alias("technic:lv_alloy_furnace_active", "technic:lv_alloy_furnace")
+me.register_machine_alias("technic:mv_alloy_furnace_active", "technic:mv_alloy_furnace")
+me.register_machine_alias("technic:lv_extractor_active", "technic:lv_extractor")
+me.register_machine_alias("technic:mv_extractor_active", "technic:mv_extractor")
+me.register_machine_alias("technic:lv_compressor_active", "technic:lv_compressor")
+me.register_machine_alias("technic:mv_compressor_active", "technic:mv_compressor")
+me.register_machine_alias("technic:hv_compressor_active", "technic:hv_compressor")
+me.register_machine_alias("technic:mv_centrifuge_active", "technic:mv_centrifuge")
+me.register_machine_alias("technic:mv_freezer_active", "technic:mv_freezer")
+
 -- ======================================================================== --
 
 

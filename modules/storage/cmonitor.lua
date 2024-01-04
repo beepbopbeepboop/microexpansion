@@ -38,7 +38,7 @@ local function chest_formspec(pos, start_id, listname, page_max, q)
       ]]
       local status = "The status of the crafter is: " ..
         ((net.pending and "running " .. #net.pending .. " steps\n") or "idle\n")
-      status = status .. (me.ac_status or "")
+      status = status .. (net.ac_status or "")
       buttons = [[
 	button[0.8,5.1;0.8,0.9;prev;<]
 	button[2.65,5.1;0.8,0.9;next;>]
@@ -250,7 +250,7 @@ me.register_node("cmonitor", {
       meta:set_string("formspec", chest_formspec(pos, page, inv_name, page_max))
     elseif fields.clear then
       own_inv:set_size("search", 0)
-      ctrl_inv:set_size("ac", 16)
+      ctrl_inv:set_size("ac", 0)
       meta:set_int("page", 1)
       meta:set_string("inv_name", "ac")
       net.pending = nil
