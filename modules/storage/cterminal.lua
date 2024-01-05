@@ -18,11 +18,12 @@ local me = microexpansion
 local pipeworks_enabled = minetest.get_modpath("pipeworks") and true or false
 
 -- [me chest] Get formspec
-local function chest_formspec(pos, start_id, listname, page_max, q)
+local function chest_formspec(pos, start_id, listname, page_max, q, c)
   local list
   local page_number = ""
   local buttons = ""
   local query = q or ""
+  local crafts = (c and "true") or "false"
   local net,cpos = me.get_connected_network(pos)
 
   if cpos then
@@ -72,6 +73,8 @@ local function chest_formspec(pos, start_id, listname, page_max, q)
 	tooltip[clear;Reset]
 	field[6,5.42;2,1;autocraft;;1]
 	tooltip[autocraft;Number of items to Craft]
+	checkbox[6,6.45;crafts;crafts;]]..crafts..[[]
+	tooltip[crafts;Show only craftable items]
       ]]
     else
       list = "label[3,2;" .. minetest.colorize("red", "No connected storage!") .. "]"
@@ -476,18 +479,6 @@ me.register_node("cterminal", {
   allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
     me.log("Allow a move from "..from_list.." to "..to_list, "error")
     local meta = minetest.get_meta(pos)
-    if to_list == "search" then
-      local net = me.get_connected_network(pos)
-      local linv = minetest.get_meta(pos):get_inventory()
-      local inv = net:get_inventory()
-      local stack = linv:get_stack(from_list, from_index)
-      stack:set_count(count)
-      -- local meta = minetest.get_meta(pos)
-      -- meta:set_string("infotext", "allow moving: "..stack:get_name())
-      -- TODO: Check capacity? Test.
-      me.insert_item(stack, net, inv, "main")
-      return count
-    end
     if to_list == "recipe" and from_list == "search" then
       local net = me.get_connected_network(pos)
       local linv = minetest.get_meta(pos):get_inventory()
@@ -504,6 +495,21 @@ me.register_node("cterminal", {
       local stack = linv:get_stack(from_list, from_index)
       return on_output_change(pos, linv, stack)
     end
+    if from_list == "crafts" then
+      return 0
+    end
+    if to_list == "search" then
+      local net = me.get_connected_network(pos)
+      local linv = minetest.get_meta(pos):get_inventory()
+      local inv = net:get_inventory()
+      local stack = linv:get_stack(from_list, from_index)
+      stack:set_count(count)
+      -- local meta = minetest.get_meta(pos)
+      -- meta:set_string("infotext", "allow moving: "..stack:get_name())
+      -- TODO: Check capacity? Test.
+      me.insert_item(stack, net, inv, "main")
+      return count
+    end
     return count
   end,
   allow_metadata_inventory_take = function(pos, listname, index, stack, player)
@@ -512,6 +518,9 @@ me.register_node("cterminal", {
     local count = stack:get_count()
     if listname == "search" or listname == "recipe" then
       count = math.min(count, stack:get_stack_max())
+    end
+    if listname == "crafts" then
+      return 0
     end
     --[[if listname == "main" then
       -- This should be unused, we don't have a local inventory called main.
@@ -681,6 +690,7 @@ me.register_node("cterminal", {
     local meta = minetest.get_meta(pos)
     local page = meta:get_int("page")
     local inv_name = meta:get_string("inv_name")
+    local crafts = meta:get_string("crafts") == "true"
     local own_inv = meta:get_inventory()
     local ctrl_inv
     if cpos then
@@ -706,37 +716,104 @@ me.register_node("cterminal", {
 	return
       end
       meta:set_int("page", page + 32)
-      meta:set_string("formspec", chest_formspec(pos, page + 32, inv_name, page_max))
+      meta:set_string("formspec", chest_formspec(pos, page + 32, inv_name, page_max, fields.filter, crafts))
     elseif fields.prev then
       if page - 32 < 1 then
 	return
       end
       meta:set_int("page", page - 32)
-      meta:set_string("formspec", chest_formspec(pos, page - 32, inv_name, page_max))
+      meta:set_string("formspec", chest_formspec(pos, page - 32, inv_name, page_max, fields.filter, crafts))
+    elseif fields.crafts then
+      meta:set_int("page", 1)
+      -- me.log("CRAFT: craftables: "..dump(net and net.process), "error")
+      me.log("CRAFT: got fields: "..dump(fields), "error")
+      inv_name = "main"
+      if fields.crafts == "true" then
+        crafts = true
+        meta:set_string("crafts", "true")
+        inv_name = "crafts"
+        local tab = {}
+	if net then
+	  if not net.process then
+	    net:reload_network()
+	  end
+          for name,pos in pairs(net.autocrafters) do
+            tab[#tab + 1] = ItemStack(name)
+	  end
+	  tab[#tab + 1] = ItemStack("")
+          for name,pos in pairs(net.process) do
+            tab[#tab + 1] = ItemStack(name)
+          end
+        end
+	own_inv:set_list(inv_name, tab)
+	meta:set_string("inv_name", inv_name)
+	page_max = math.floor(own_inv:get_size(inv_name) / 32) + 1
+	meta:set_string("formspec", chest_formspec(pos, 1, inv_name, page_max, fields.filter, crafts))
+      else
+	crafts = false
+        meta:set_string("crafts", "false")
+	if fields.filter == "" then
+          own_inv:set_size("crafts", 0)
+	  meta:set_string("inv_name", inv_name)
+	  page_max = math.floor(ctrl_inv:get_size(inv_name) / 32) + 1
+	  meta:set_string("formspec", chest_formspec(pos, 1, inv_name, page_max, fields.fields, crafts))
+	end
+      end
+      if fields.filter ~= "" then
+        inv = own_inv
+        if inv_name == "main" then
+          inv = ctrl_inv
+        end
+        local tab = {}
+        for i = 1, inv:get_size(inv_name) do
+	  local match = inv:get_stack(inv_name, i):get_name():find(fields.filter)
+	  if match then
+	    tab[#tab + 1] = inv:get_stack(inv_name, i)
+	  end
+        end
+	inv_name = "search"
+        own_inv:set_list(inv_name, tab)
+	meta:set_string("inv_name", inv_name)
+	page_max = math.floor(own_inv:get_size(inv_name) / 32) + 1
+	meta:set_string("formspec", chest_formspec(pos, 1, inv_name, page_max, fields.filter, crafts))
+      end
     elseif fields.search or fields.key_enter_field == "filter" then
       own_inv:set_size("search", 0)
+      me.log("CRAFT: got fields: "..dump(fields), "error")
+      meta:set_int("page", 1)
+      inv_name = "main"
+      inv = ctrl_inv
+      if crafts then
+        inv_name = "crafts"
+	inv = own_inv
+      end
       if fields.filter == "" then
-	meta:set_int("page", 1)
-	meta:set_string("inv_name", "main")
-	meta:set_string("formspec", chest_formspec(pos, 1, "main", page_max))
+	meta:set_string("inv_name", inv_name)
+	meta:set_string("formspec", chest_formspec(pos, 1, inv_name, page_max, fields.filter, crafts))
       else
 	local tab = {}
-	for i = 1, ctrl_inv:get_size("main") do
-	  local match = ctrl_inv:get_stack("main", i):get_name():find(fields.filter)
+	for i = 1, inv:get_size(inv_name) do
+	  local match = inv:get_stack(inv_name, i):get_name():find(fields.filter)
 	  if match then
-	    tab[#tab + 1] = ctrl_inv:get_stack("main", i)
+	    tab[#tab + 1] = inv:get_stack(inv_name, i)
 	  end
 	end
-	own_inv:set_list("search", tab)
-	meta:set_int("page", 1)
-	meta:set_string("inv_name", "search")
-	meta:set_string("formspec", chest_formspec(pos, 1, "search", page_max, fields.filter))
+	inv_name = "search"
+	own_inv:set_list(inv_name, tab)
+	meta:set_string("inv_name", inv_name)
+	page_max = math.floor(own_inv:get_size(inv_name) / 32) + 1
+	meta:set_string("formspec", chest_formspec(pos, 1, inv_name, page_max, fields.filter, crafts))
       end
     elseif fields.clear then
+      me.log("CRAFT: got fields: "..dump(fields), "error")
       own_inv:set_size("search", 0)
+      own_inv:set_size("crafts", 0)
       meta:set_int("page", 1)
-      meta:set_string("inv_name", "main")
-      meta:set_string("formspec", chest_formspec(pos, 1, "main", page_max))
+      inv_name = "main"
+      meta:set_string("inv_name", inv_name)
+      meta:set_string("crafts", "false")
+      page_max = math.floor(ctrl_inv:get_size(inv_name) / 32) + 1
+      meta:set_string("formspec", chest_formspec(pos, 1, inv_name, page_max))
     elseif fields.tochest then
       local pinv = minetest.get_inventory({type="player", name=sender:get_player_name()})
       -- TODO: test and fix, net:set_storage_space(pinv:get_size("main"))

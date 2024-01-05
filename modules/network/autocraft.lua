@@ -124,7 +124,7 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
     local craft_count = dat.ostack:get_count()
     local total = math.ceil(count/craft_count)
     -- crafting 4 carbon plates misses taking 1 carbin plate on output, make this bigger
-    -- we'll try 1 for now, figure out right formula.  1 looks perfect
+    -- we'll try 1 for now, figure out right formula.  1 looks perfect.  128 glue is short by 2
     main_action_time = round((total+2)*dat.recip.time/speed) + 1  -- 1  + 1 is a second too slow on the doped for 81., 2 +0 doesn't work, a second shy
     if second_output then
       second_output = ItemStack(second_output)
