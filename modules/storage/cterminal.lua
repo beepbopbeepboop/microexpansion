@@ -47,7 +47,7 @@ local function chest_formspec(pos, start_id, listname, page_max, q, c)
 	]]
       end
       list = list .. [[
-        list[context;recipe;0.22,5.22;3,3;]
+	list[context;recipe;0.22,5.22;3,3;]
 	list[context;output;4,6.22;1,1;]
       ]]
       list = list .. [[
@@ -323,17 +323,17 @@ local function on_output_change(pos, linv, stack)
     for i = 1, 9 do
       local prev = linv:get_stack("recipe", i)
       if prev and prev:get_name() ~= "" and not inv:room_for_item("main", prev) then
-        -- full, no room to remove
-        has_enough = false
+	-- full, no room to remove
+	has_enough = false
       elseif prev and prev:get_name() ~= "" and me.insert_item(prev, net, inv, "main"):get_count() > 0 then
-        net:set_storage_space(true)
-        -- full, no room to remove
-        -- push into player inventory?
-        -- Don't have to worry about this happening until minetest is fully multithreaded
-        has_enough = false
+	net:set_storage_space(true)
+	-- full, no room to remove
+	-- push into player inventory?
+	-- Don't have to worry about this happening until minetest is fully multithreaded
+	has_enough = false
       else
-        net:set_storage_space(true)
-        linv:set_stack("recipe", i, ItemStack(""))
+	net:set_storage_space(true)
+	linv:set_stack("recipe", i, ItemStack(""))
       end
     end
     return has_enough
@@ -354,19 +354,19 @@ local function on_output_change(pos, linv, stack)
       local typename = me.block_to_typename_map[machine_name]
       local recip = typename and me.get_recipe(typename, inputs)
       if recip and recip.output then
-        recip.intput = inputs
-        -- me.log("PROCESS: "..name.." was found for "..typename.." on a "..machine_name, "error")
+	recip.intput = inputs
+	-- me.log("PROCESS: "..name.." was found for "..typename.." on a "..machine_name, "error")
 	-- freezer can produce two outputs, we only care about the first.
 	if recip.output[1] then
 	  recip.output = recip.output[1]
 	end
-        stack = ItemStack(recip.output)
-        linv:set_stack("output", 1, stack)
+	stack = ItemStack(recip.output)
+	linv:set_stack("output", 1, stack)
 	-- me.log("PROCESS: and the output is "..minetest.serialize(recip.output), "error")
 	-- me.log("PROCESS: and the output is "..stack:get_name(), "error")
       else
-        me.log("PROCESS: "..name.." was missing from recipe on a "..machine_name, "error")
-        linv:set_stack("output", 1, ItemStack())
+	me.log("PROCESS: "..name.." was missing from recipe on a "..machine_name, "error")
+	linv:set_stack("output", 1, ItemStack())
       end
     end
     return 0
@@ -375,12 +375,12 @@ local function on_output_change(pos, linv, stack)
     if has_enough then
       local pos,ipos = next(net.autocrafters[name])
       if pos then
-        local rinv = minetest.get_meta(pos):get_inventory()
-        stack = ItemStack(rinv:get_stack("output", 1))
-        linv:set_stack("output", 1, stack)
+	local rinv = minetest.get_meta(pos):get_inventory()
+	stack = ItemStack(rinv:get_stack("output", 1))
+	linv:set_stack("output", 1, stack)
       else
-        -- me.log("pos in autocrafters was missing", "error")
-        linv:set_stack("output", 1, ItemStack())
+	-- me.log("pos in autocrafters was missing", "error")
+	linv:set_stack("output", 1, ItemStack())
       end
     else
       linv:set_stack("output", 1, ItemStack())
@@ -397,7 +397,7 @@ local function on_output_change(pos, linv, stack)
       -- full, no room to remove
       has_enough = false
       if width_idx <= width then
-        item_idx = item_idx + 1
+	item_idx = item_idx + 1
       end
     elseif prev and prev:get_name() ~= "" and me.insert_item(prev, net, inv, "main"):get_count() > 0 then
       net:set_storage_space(true)
@@ -406,16 +406,16 @@ local function on_output_change(pos, linv, stack)
       -- Don't have to worry about this happening until minetest is fully multithreaded
       has_enough = false
       if width_idx <= width then
-        item_idx = item_idx + 1
+	item_idx = item_idx + 1
       end
     elseif width_idx <= width then
       net:set_storage_space(true)
       if inv:contains_item("main", items[item_idx]) then
-        me.remove_item(net, inv, "main", ItemStack(items[item_idx]))
-        linv:set_stack("recipe", i, items[item_idx])
+	me.remove_item(net, inv, "main", ItemStack(items[item_idx]))
+	linv:set_stack("recipe", i, items[item_idx])
       else
-        has_enough = false
-        linv:set_stack("recipe", i, ItemStack(""))
+	has_enough = false
+	linv:set_stack("recipe", i, ItemStack(""))
       end
       item_idx = item_idx + 1
     else
@@ -559,7 +559,7 @@ me.register_node("cterminal", {
       local inv = net:get_inventory()
       local leftovers = me.insert_item(stack, net, inv, "main")
       if leftovers:get_count() > 0 then
-        fixme()
+	fixme()
       end
       net:set_storage_space(true)
     end
@@ -577,21 +577,21 @@ me.register_node("cterminal", {
       local replace = true
       -- This assumes that all inputs are only just 1 item, always true?
       for i = 1, 9 do
-        local inp = linv:get_stack("recipe", i)
+	local inp = linv:get_stack("recipe", i)
 	if inp and inp:get_name() ~= "" then
 	  local consume = ItemStack(inp:get_name())
 	  replace = replace and (inp:get_count() > 1 or inv:contains_item("main", consume))
 	end
       end
       for i = 1, 9 do
-        local inp = linv:get_stack("recipe", i)
+	local inp = linv:get_stack("recipe", i)
 	if inp and inp:get_name() ~= "" then
 	  if inp:get_count() == 1 then
 	    if inv:contains_item("main", inp) then
 	      local r = me.remove_item(net, inv, "main", inp)
 	      if r:get_count() ~= 1 then
-	        linv:set_stack("recipe", i, ItemStack(""))
-	        replace = false
+		linv:set_stack("recipe", i, ItemStack(""))
+		replace = false
 	      end
 	    else
 	      linv:set_stack("recipe", i, ItemStack(""))
@@ -617,11 +617,11 @@ me.register_node("cterminal", {
 	    minetest.add_item(pos, leftovers)
 	  end
 	end
-        if replace then
+	if replace then
 	  linv:set_stack("output", 1, craft.output.item)
-        else
+	else
 	  linv:set_list("output", {})
-        end
+	end
       end
     elseif listname == "recipe" then
       local linv = minetest.get_meta(pos):get_inventory()
@@ -729,50 +729,52 @@ me.register_node("cterminal", {
       me.log("CRAFT: got fields: "..dump(fields), "error")
       inv_name = "main"
       if fields.crafts == "true" then
-        crafts = true
-        meta:set_string("crafts", "true")
-        inv_name = "crafts"
-        local tab = {}
+	crafts = true
+	meta:set_string("crafts", "true")
+	inv_name = "crafts"
+	local tab = {}
 	if net then
 	  if not net.process then
 	    net:reload_network()
 	  end
-          for name,pos in pairs(net.autocrafters) do
-            tab[#tab + 1] = ItemStack(name)
+	  for name,pos in pairs(net.autocrafters) do
+	    tab[#tab + 1] = ItemStack(name)
 	  end
 	  tab[#tab + 1] = ItemStack("")
-          for name,pos in pairs(net.process) do
-            tab[#tab + 1] = ItemStack(name)
-          end
-        end
+	  for name,pos in pairs(net.process) do
+	    tab[#tab + 1] = ItemStack(name)
+	  end
+	end
+	own_inv:set_size(inv_name, #tab)
 	own_inv:set_list(inv_name, tab)
 	meta:set_string("inv_name", inv_name)
 	page_max = math.floor(own_inv:get_size(inv_name) / 32) + 1
 	meta:set_string("formspec", chest_formspec(pos, 1, inv_name, page_max, fields.filter, crafts))
       else
 	crafts = false
-        meta:set_string("crafts", "false")
+	meta:set_string("crafts", "false")
 	if fields.filter == "" then
-          own_inv:set_size("crafts", 0)
+	  own_inv:set_size("crafts", 0)
 	  meta:set_string("inv_name", inv_name)
 	  page_max = math.floor(ctrl_inv:get_size(inv_name) / 32) + 1
 	  meta:set_string("formspec", chest_formspec(pos, 1, inv_name, page_max, fields.fields, crafts))
 	end
       end
       if fields.filter ~= "" then
-        inv = own_inv
-        if inv_name == "main" then
-          inv = ctrl_inv
-        end
-        local tab = {}
-        for i = 1, inv:get_size(inv_name) do
+	inv = own_inv
+	if inv_name == "main" then
+	  inv = ctrl_inv
+	end
+	local tab = {}
+	for i = 1, inv:get_size(inv_name) do
 	  local match = inv:get_stack(inv_name, i):get_name():find(fields.filter)
 	  if match then
 	    tab[#tab + 1] = inv:get_stack(inv_name, i)
 	  end
-        end
+	end
 	inv_name = "search"
-        own_inv:set_list(inv_name, tab)
+	own_inv:set_size(inv_name, #tab)
+	own_inv:set_list(inv_name, tab)
 	meta:set_string("inv_name", inv_name)
 	page_max = math.floor(own_inv:get_size(inv_name) / 32) + 1
 	meta:set_string("formspec", chest_formspec(pos, 1, inv_name, page_max, fields.filter, crafts))
@@ -784,7 +786,7 @@ me.register_node("cterminal", {
       inv_name = "main"
       inv = ctrl_inv
       if crafts then
-        inv_name = "crafts"
+	inv_name = "crafts"
 	inv = own_inv
       end
       if fields.filter == "" then
