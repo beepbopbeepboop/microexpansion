@@ -185,8 +185,6 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
 
   local toolmeta = get_metadata(toolstack)
 
-  toolmeta.charge = toolmeta.charge - 1
-
   local pos = toolmeta.terminal
   local net
   if pos then
