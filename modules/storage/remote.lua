@@ -23,12 +23,11 @@ local function get_metadata(toolstack)
   return m
 end
 
-local function chest_formspec(pos, start_id, listname, page_max, q, c)
+local function chest_formspec(s, pos, start_id, listname, page_max, q)
   local list
   local page_number = ""
   local buttons = ""
   local query = q or ""
-  local crafts = (c and "true") or "false"
   local net,cpos = me.get_connected_network(pos)
 
   if cpos then
@@ -39,7 +38,7 @@ local function chest_formspec(pos, start_id, listname, page_max, q, c)
 	list = "list[detached:"..ctrlinvname..";"
 	  .. listname .. ";0,0.3;8,4;" .. (start_id - 1) .. "]"
       else
-	list = "list[context;" .. listname .. ";0,0.3;8,4;" .. (start_id - 1) .. "]"
+	list = "list[current_player;" .. listname .. ";0,0.3;8,4;" .. (start_id - 1) .. "]"
       end
       if minetest.get_modpath("i3") then
 	list = list .. [[
@@ -52,16 +51,16 @@ local function chest_formspec(pos, start_id, listname, page_max, q, c)
 	]]
       end
       list = list .. [[
-	list[context;recipe;0.22,5.22;3,3;]
-	list[context;output;4,6.22;1,1;]
+	list[current_player;recipe;0.22,5.22;3,3;]
+	list[current_player;output;4,6.22;1,1;]
       ]]
       list = list .. [[
 	listring[current_player;main]
 	listring[detached:]]..ctrlinvname..[[;main]
 	listring[current_player;main]
-	listring[context;recipe]
+	listring[current_player;recipe]
 	listring[current_player;main]
-	listring[context;output]
+	listring[current_player;output]
 	listring[current_player;main]
       ]]
       buttons = [[
@@ -78,7 +77,7 @@ local function chest_formspec(pos, start_id, listname, page_max, q, c)
 	tooltip[clear;Reset]
 	field[6,5.42;2,1;autocraft;;1]
 	tooltip[autocraft;Number of items to Craft]
-	checkbox[6,6.45;crafts;crafts;]]..crafts..[[]
+	checkbox[6,6.45;crafts;crafts;]]..s.crafts..[[]
 	tooltip[crafts;Show only craftable items]
       ]]
     else
@@ -100,6 +99,7 @@ local function chest_formspec(pos, start_id, listname, page_max, q, c)
     list ..
   [[
     label[0,-0.23;ME Remote Crafting Terminal]
+    label[5,-0.23;Charge level: ]]..s.charge..[[]
     field_close_on_enter[filter;false]
     field_close_on_enter[autocraft;false]
   ]]..
@@ -125,6 +125,9 @@ minetest.register_tool("microexpansion:remote", {
         me.log("REMOTE: is now bound", "error")
 	toolmeta.terminal = pos
 	toolmeta.controller = cpos
+	local pinv = user:get_inventory()
+	pinv:set_size("recipe", 3*3)
+	pinv:set_size("output", 1)
 	toolstack:set_metadata(minetest.serialize(toolmeta))
 	user:set_wielded_item(toolstack)
       else
@@ -160,18 +163,17 @@ minetest.register_tool("microexpansion:remote", {
     local page = toolmeta.page
     local inv_name = toolmeta.inv_name
     local query = toolmeta.query
-    local crafts = toolmeta.crafts == "true"
+    local crafts = toolmeta.crafts
 
     local page_max
     local inv
     local meta
-    local own_inv
+    local own_inv = user:get_inventory()
     local ctrl_inv
     if cpos then
       ctrl_inv = net:get_inventory()
       meta = minetest.get_meta(pos)
-      own_inv = meta:get_inventory()
-      me.log("REMOTE: invname "..inv_name.." page "..page.." query "..query.." crafts "..((crafts and "true") or "false"), "error")
+      me.log("REMOTE: invname "..inv_name.." page "..page.." query "..query.." crafts "..crafts, "error")
     end
     if inv_name == "main" then
       inv = ctrl_inv
@@ -183,7 +185,7 @@ minetest.register_tool("microexpansion:remote", {
     end
 
     minetest.show_formspec(user:get_player_name(), "microexpansion:remote_control",
-      chest_formspec(pos, page, inv_name, page_max, query, crafts))
+      chest_formspec(toolmeta, pos, page, inv_name, page_max, query))
 
     return toolstack
   end,
@@ -197,6 +199,8 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
 
   local toolmeta = get_metadata(toolstack)
 
+  toolmeta.charge = toolmeta.charge - 1
+
   local pos = toolmeta.terminal
   local cpos = toolmeta.controller
   local net
@@ -207,12 +211,11 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
   local page_max
   local inv
   local meta
-  local own_inv
+  local own_inv = user:get_inventory()
   local ctrl_inv
   if cpos then
     ctrl_inv = net:get_inventory()
     meta = minetest.get_meta(pos)
-    own_inv = meta:get_inventory()
   end
   if inv_name == "main" then
     inv = ctrl_inv
@@ -221,7 +224,6 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
   end
 
   local page = toolmeta.page
-  local crafts = (toolmeta.crafts == "true" and true) or false
   local inv_name = toolmeta.inv_name
   for field, value in pairs(fields) do
     me.log("REMOTE: form "..field.." value "..value, "error")
@@ -229,13 +231,13 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
       if page + 32 <= inv:get_size(inv_name) then
         page = page + 32
         toolmeta.page = page
-        --meta:set_string("formspec", chest_formspec(pos, page, inv_name, page_max, fields.filter, crafts))
+        --meta:set_string("formspec", chest_formspec(toolmeta, pos, page, inv_name, page_max, fields.filter))
       end        
     elseif field == "prev" then
       if page - 32 >= 1 then
         page = page - 32
         toolmeta.page = page
-        --meta:set_string("formspec", chest_formspec(pos, page, inv_name, page_max, fields.filter, crafts))
+        --meta:set_string("formspec", chest_formspec(toolmeta, pos, page, inv_name, page_max, fields.filter))
       end
     elseif field == "crafts" then
       toolmeta.crafts = value
@@ -243,13 +245,13 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
       toolmeta.filter = value
     elseif field == "search" then
     elseif field == "clear" then
-      own_inv:set_size("search", 0)
-      own_inv:set_size("crafts", 0)
+      own_inv:set_size("me_search", 0)
+      own_inv:set_size("me_crafts", 0)
       toolmeta.page = 1
       toolmeta.inv_name = "main"
       toolmeta.crafts = "false"
       toolmeta.page_max = math.floor(ctrl_inv:get_size(inv_name) / 32) + 1
-      --meta:set_string("formspec", chest_formspec(pos, 1, inv_name, page_max))
+      --meta:set_string("formspec", chest_formspec(toolmeta, pos, 1, inv_name, page_max))
     elseif field == "tochest" then
     elseif field == "autocraft" then
       if tonumber(value) ~= nil then
