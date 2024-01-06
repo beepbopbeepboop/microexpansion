@@ -123,9 +123,13 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
     local speed = me.speed[machine_name]
     local craft_count = dat.ostack:get_count()
     local total = math.ceil(count/craft_count)
-    -- crafting 4 carbon plates misses taking 1 carbin plate on output, make this bigger
+    -- crafting 4 carbon plates misses taking 1 carbon plate on output, make this bigger
     -- we'll try 1 for now, figure out right formula.  1 looks perfect.  128 glue is short by 2
-    main_action_time = round((total+2)*dat.recip.time/speed) + 1  -- 1  + 1 is a second too slow on the doped for 81., 2 +0 doesn't work, a second shy
+    -- 1  + 1 is a second too slow on the doped for 81., 2 +0 doesn't work, a second shy
+    --main_action_time = round((total+2)*dat.recip.time/speed) + 1
+    --main_action_time = (total+1)*round(dat.recip.time/speed) -- one shy
+    --main_action_time = total*dat.recip.time/speed + 2 -- 2 at 80 shy, 3 at 160 shy
+    main_action_time = total*1.025*dat.recip.time/speed + 2 -- 
     if second_output then
       second_output = ItemStack(second_output)
       second_output:set_count(second_output:get_count()*total)
