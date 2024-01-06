@@ -12,10 +12,12 @@
 
 -- The search list doesn't update when main updates or when autocrafting updates.
 
-local autocrafterCache = {}  -- caches some recipe data to avoid to call the slow function minetest.get_craft_result() every second
-
 local me = microexpansion
 local pipeworks_enabled = minetest.get_modpath("pipeworks") and true or false
+
+-- caches some recipe data to avoid to call the slow function minetest.get_craft_result() every second
+me.autocrafterCache = {}
+local autocrafterCache = me.autocrafterCache
 
 -- [me chest] Get formspec
 local function chest_formspec(pos, start_id, listname, page_max, q, c)
