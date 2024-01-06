@@ -16,6 +16,7 @@ dofile(module_path.."/terminal.lua")
 dofile(module_path.."/cterminal.lua")
 dofile(module_path.."/cmonitor.lua")
 dofile(module_path.."/interface.lua")
+dofile(module_path.."/remote.lua")
 
 local drawers_enabled = minetest.get_modpath("drawers") and true or false
 if drawers_enabled then
@@ -24,7 +25,6 @@ if drawers_enabled then
 end
 local technic_enabled = minetest.get_modpath("technic") and true or false
 if technic_enabled then
-  dofile(module_path.."/remote.lua")
   dofile(module_path.."/technic-interop.lua")
 end
 local pipeworks_enabled = minetest.get_modpath("pipeworks") and true or false

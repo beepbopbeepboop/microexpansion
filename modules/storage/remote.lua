@@ -1,15 +1,12 @@
 local me = microexpansion
 
-technic = rawget(_G, "technic") or {}
+--technic = rawget(_G, "technic") or {}
 
 --local S = technic.getter
 
 local S = function(t)
   return t
 end
-
-
--- technic.register_power_tool("microexpansion:remote", 300000)
 
 local function get_metadata(toolstack)
   local m = minetest.deserialize(toolstack:get_metadata())
@@ -23,14 +20,13 @@ local function get_metadata(toolstack)
   return m
 end
 
-local function chest_formspec(s, pos, start_id, listname, page_max, q)
+local function chest_formspec(s, pos, start_id, listname)
   local list
   local page_number = ""
   local buttons = ""
-  local query = q or ""
   local net,cpos = me.get_connected_network(pos)
 
-  if cpos then
+  if net then
     local inv = net:get_inventory()
     if listname and (inv:get_size(listname) > 0 or net:get_item_capacity() > 0) then
       local ctrlinvname = net:get_inventory_name()
@@ -70,7 +66,7 @@ local function chest_formspec(s, pos, start_id, listname, page_max, q)
 	button[7.25,4.35;0.8,0.9;next;>]
 	tooltip[prev;Previous]
 	tooltip[next;Next]
-	field[0.29,4.6;2.2,1;filter;;]]..query..[[]
+	field[0.29,4.6;2.2,1;filter;;]]..s.query..[[]
 	button[2.1,4.5;0.8,0.5;search;?]
 	button[2.75,4.5;0.8,0.5;clear;X]
 	tooltip[search;Search]
@@ -86,9 +82,9 @@ local function chest_formspec(s, pos, start_id, listname, page_max, q)
   else
     list = "label[3,2;" .. minetest.colorize("red", "No connected network!") .. "]"
   end
-  if page_max then
+  if s.page_max then
     page_number = "label[6.15,4.5;" .. math.floor((start_id / 32)) + 1 ..
-      "/" .. page_max .."]"
+      "/" .. s.page_max .."]"
   end
 
   return [[
@@ -111,53 +107,46 @@ minetest.register_tool("microexpansion:remote", {
   description = S("Microexpansion Remote"),
   inventory_image = "technic_prospector.png",
   wear_represents = "technic_RE_charge",
-  -- on_refill = technic.refill_RE_charge,
+  on_refill = technic.refill_RE_charge,
   on_use = function(toolstack, user, pointed_thing)
     if not user or not user:is_player() or user.is_fake_player then return end
     local toolmeta = get_metadata(toolstack)
-    local net = nil
     if pointed_thing.type == "node" then
       local pos = pointed_thing.under
       pos.z = pos.z - 1
       local net,cpos = me.get_connected_network(pos)
-      -- TODO: ensure that pos is a crafting terminal
       if net then
-        me.log("REMOTE: is now bound", "error")
+	minetest.chat_send_player(user:get_player_name(), "Connected to ME network, use left-click to use.")
 	toolmeta.terminal = pos
-	toolmeta.controller = cpos
 	local pinv = user:get_inventory()
 	pinv:set_size("recipe", 3*3)
 	pinv:set_size("output", 1)
 	toolstack:set_metadata(minetest.serialize(toolmeta))
 	user:set_wielded_item(toolstack)
       else
-        me.log("REMOTE: is not bound", "error")
+	minetest.chat_send_player(user:get_player_name(), "Left-click on ME block to connect to ME network.")
+	return
       end
     end
-    if not net then
-      net = me.get_connected_network(toolmeta.controller)
-    end
-    local pos = toolmeta.terminal
   end,
   on_secondary_use = function(toolstack, user, pointed_thing)
     if not user or not user:is_player() or user.is_fake_player then return end
     local toolmeta = get_metadata(toolstack)
-    local net = nil
-    if not net then
-      net = me.get_connected_network(toolmeta.terminal)
-    end
     local pos = toolmeta.terminal
-    local cpos = toolmeta.controller
+    local net = me.get_connected_network(pos)
     -- if not net then return end
 
-    local charge_to_take = 1
+    local charge_to_take = 100
 
-    -- if toolmeta.charge < charge_to_take then return end
+    if toolmeta.charge < charge_to_take then
+      minetest.chat_send_player(user:get_player_name(), "No power left, recharge in technic battery.")
+      return
+    end
 
-    if false and not technic.creative_mode then
+    if technic and not technic.creative_mode then
       toolmeta.charge = toolmeta.charge - charge_to_take
       toolstack:set_metadata(minetest.serialize(toolmeta))
-      -- technic.set_RE_wear(toolstack, toolmeta.charge, technic.power_tools[toolstack:get_name()])
+      technic.set_RE_wear(toolstack, toolmeta.charge, technic.power_tools[toolstack:get_name()])
     end
 
     local page = toolmeta.page
@@ -165,15 +154,11 @@ minetest.register_tool("microexpansion:remote", {
     local query = toolmeta.query
     local crafts = toolmeta.crafts
 
-    local page_max
     local inv
-    local meta
     local own_inv = user:get_inventory()
     local ctrl_inv
-    if cpos then
+    if net then
       ctrl_inv = net:get_inventory()
-      meta = minetest.get_meta(pos)
-      me.log("REMOTE: invname "..inv_name.." page "..page.." query "..query.." crafts "..crafts, "error")
     end
     if inv_name == "main" then
       inv = ctrl_inv
@@ -181,11 +166,12 @@ minetest.register_tool("microexpansion:remote", {
       inv = own_inv
     end
     if net then
-      page_max = math.floor(inv:get_size(inv_name) / 32) + 1
+      toolmeta.page_max = math.floor(inv:get_size(inv_name) / 32) + 1
+      toolstack:set_metadata(minetest.serialize(toolmeta))
     end
 
     minetest.show_formspec(user:get_player_name(), "microexpansion:remote_control",
-      chest_formspec(toolmeta, pos, page, inv_name, page_max, query))
+      chest_formspec(toolmeta, pos, page, inv_name))
 
     return toolstack
   end,
@@ -202,20 +188,17 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
   toolmeta.charge = toolmeta.charge - 1
 
   local pos = toolmeta.terminal
-  local cpos = toolmeta.controller
   local net
-  if toolmeta.terminal then
-    net = me.get_connected_network(toolmeta.terminal)
+  if pos then
+    net = me.get_connected_network(pos)
   end
 
   local page_max
   local inv
-  local meta
   local own_inv = user:get_inventory()
   local ctrl_inv
-  if cpos then
+  if net then
     ctrl_inv = net:get_inventory()
-    meta = minetest.get_meta(pos)
   end
   if inv_name == "main" then
     inv = ctrl_inv
@@ -231,27 +214,28 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
       if page + 32 <= inv:get_size(inv_name) then
         page = page + 32
         toolmeta.page = page
-        --meta:set_string("formspec", chest_formspec(toolmeta, pos, page, inv_name, page_max, fields.filter))
+        --meta:set_string("formspec", chest_formspec(toolmeta, pos, page, inv_name))
       end        
     elseif field == "prev" then
       if page - 32 >= 1 then
         page = page - 32
         toolmeta.page = page
-        --meta:set_string("formspec", chest_formspec(toolmeta, pos, page, inv_name, page_max, fields.filter))
+        --meta:set_string("formspec", chest_formspec(toolmeta, pos, page, inv_name))
       end
     elseif field == "crafts" then
       toolmeta.crafts = value
     elseif field == "filter" then
-      toolmeta.filter = value
+      toolmeta.query = value
     elseif field == "search" then
     elseif field == "clear" then
       own_inv:set_size("me_search", 0)
       own_inv:set_size("me_crafts", 0)
       toolmeta.page = 1
       toolmeta.inv_name = "main"
+      toolmeta.query = ""
       toolmeta.crafts = "false"
-      toolmeta.page_max = math.floor(ctrl_inv:get_size(inv_name) / 32) + 1
-      --meta:set_string("formspec", chest_formspec(toolmeta, pos, 1, inv_name, page_max))
+      toolmeta.page_max = math.floor(inv:get_size(inv_name) / 32) + 1
+      --meta:set_string("formspec", chest_formspec(toolmeta, pos, 1, inv_name))
     elseif field == "tochest" then
     elseif field == "autocraft" then
       if tonumber(value) ~= nil then
@@ -259,7 +243,7 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
       end
     elseif field == "key_enter_field" and value == "autocraft" then
       local count = tonumber(toolmeta.autocraft)
-      if not own_inv:get_stack("output", 1):is_empty() and count < math.pos(2,16) then
+      if not own_inv:get_stack("output", 1):is_empty() and count < math.pow(2,16) then
         me.autocraft(me.autocrafterCache, pos, net, own_inv, ctrl_inv, count)
       end
     end
@@ -273,7 +257,11 @@ minetest.register_craft({
   output = "microexpansion:remote",
   recipe = {
     {"basic_materials:brass_ingot", "", "pipeworks:teleport_tube_1"},
-    {"", "technic:control_logic_unit", "basic_materials:brass_ingot"},
+    {"", (technic and "technic:control_logic_unit") or "", "basic_materials:brass_ingot"},
     {"", "", ""},
   }
 })
+
+if technic then
+  technic.register_power_tool("microexpansion:remote", 450000)
+end
