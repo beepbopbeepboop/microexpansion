@@ -207,6 +207,7 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
 
   local page = toolmeta.page
   local did_update = false
+  local update_search = false
   for field, value in pairs(fields) do
     me.log("REMOTE: form "..field.." value "..value, "error")
     if field == "next" then
@@ -223,69 +224,29 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
       end
     elseif field == "crafts" then
       toolmeta.crafts = value
-      inv_name = "main"
-      if value == "true" then
-        inv_name = "me_crafts"
-	local tab = {}
-	if net then
-	  if not net.process then
-	    net:reload_network()
-	  end
-	  for name,pos in pairs(net.autocrafters) do
-	    tab[#tab + 1] = ItemStack(name)
-	  end
-	  tab[#tab + 1] = ItemStack("")
-	  for name,pos in pairs(net.process) do
-	    tab[#tab + 1] = ItemStack(name)
-	  end
-	end
-	own_inv:set_size(inv_name, #tab)
-	own_inv:set_list(inv_name, tab)
-	toolmeta.inv_name = inv_name
-	page_max = math.floor(own_inv:get_size(inv_name) / 32) + 1
-	toolmeta.page_max = page_max
-	did_update = true
-      else
-	if toolmeta.query == "" then
-	  own_inv:set_size("me_crafts", 0)
-	  toolmeta.inv_name = inv_name
-	  page_max = math.floor(ctrl_inv:get_size(inv_name) / 32) + 1
-	  toolmeta.page_max = page_max
-	  did_update = true
-	end
+      page = 1
+      toolmeta.page = page
+      update_search = true
+    elseif (field == "key_enter_field" and value == "filter")
+           or field == "filter" or field == "search" then
+      if field == "filter" then
+        toolmeta.query = value
       end
-      if toolmeta.query ~= "" then
-	inv = own_inv
-	if inv_name == "main" then
-	  inv = ctrl_inv
-	end
-	local tab = {}
-	for i = 1, inv:get_size(inv_name) do
-	  local match = inv:get_stack(inv_name, i):get_name():find(toolmeta.query)
-	  if match then
-	    tab[#tab + 1] = inv:get_stack(inv_name, i)
-	  end
-	end
-	inv_name = "search"
-	own_inv:set_size(inv_name, #tab)
-	own_inv:set_list(inv_name, tab)
-	toolmeta.inv_name = inv_name
-	page_max = math.floor(own_inv:get_size(inv_name) / 32) + 1
-	toolmeta.page_max = page_max
-	did_update = true
+      if (field == "key_enter_field" and value == "filter") or field == "search" then
+        page = 1
+        toolmeta.page = page
+        update_search = true
       end
-    elseif field == "filter" then
-      toolmeta.query = value
-    elseif field == "search" then
     elseif field == "clear" then
       own_inv:set_size("me_search", 0)
       own_inv:set_size("me_crafts", 0)
-      toolmeta.page = 1
+      page = 1
+      toolmeta.page = page
       toolmeta.inv_name = "main"
       toolmeta.query = ""
       toolmeta.crafts = "false"
       toolmeta.page_max = math.floor(inv:get_size(inv_name) / 32) + 1
-      did_update = true
+      update_search = true
     elseif field == "tochest" then
     elseif field == "autocraft" then
       if tonumber(value) ~= nil then
@@ -298,6 +259,61 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
       end
     end
   end
+
+  if update_search then
+    inv_name = "main"
+    if toolmeta.crafts == "true" then
+      inv_name = "me_crafts"
+      local tab = {}
+      if net then
+	if not net.process then
+	  net:reload_network()
+	end
+	for name,pos in pairs(net.autocrafters) do
+	  tab[#tab + 1] = ItemStack(name)
+	end
+	tab[#tab + 1] = ItemStack("")
+	for name,pos in pairs(net.process) do
+	  tab[#tab + 1] = ItemStack(name)
+	end
+      end
+      own_inv:set_size(inv_name, #tab)
+      own_inv:set_list(inv_name, tab)
+      toolmeta.inv_name = inv_name
+      page_max = math.floor(own_inv:get_size(inv_name) / 32) + 1
+      toolmeta.page_max = page_max
+      did_update = true
+    else
+      if toolmeta.query == "" then
+	own_inv:set_size("me_crafts", 0)
+	toolmeta.inv_name = inv_name
+	page_max = math.floor(ctrl_inv:get_size(inv_name) / 32) + 1
+	toolmeta.page_max = page_max
+	did_update = true
+      end
+    end
+    if toolmeta.query ~= "" then
+      inv = own_inv
+      if inv_name == "main" then
+	inv = ctrl_inv
+      end
+      local tab = {}
+      for i = 1, inv:get_size(inv_name) do
+	local match = inv:get_stack(inv_name, i):get_name():find(toolmeta.query)
+	if match then
+	  tab[#tab + 1] = inv:get_stack(inv_name, i)
+	end
+      end
+      inv_name = "me_search"
+      own_inv:set_size(inv_name, #tab)
+      own_inv:set_list(inv_name, tab)
+      toolmeta.inv_name = inv_name
+      page_max = math.floor(own_inv:get_size(inv_name) / 32) + 1
+      toolmeta.page_max = page_max
+      did_update = true
+    end
+  end
+
   if did_update then
     minetest.show_formspec(user:get_player_name(), "microexpansion:remote_control",
       chest_formspec(toolmeta, pos, page, inv_name))
