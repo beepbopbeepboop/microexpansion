@@ -198,6 +198,7 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
   if net then
     ctrl_inv = net:get_inventory()
   end
+  local inv_name = toolmeta.inv_name
   if inv_name == "main" then
     inv = ctrl_inv
   else
@@ -205,23 +206,74 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
   end
 
   local page = toolmeta.page
-  local inv_name = toolmeta.inv_name
+  local did_update = false
   for field, value in pairs(fields) do
     me.log("REMOTE: form "..field.." value "..value, "error")
     if field == "next" then
       if page + 32 <= inv:get_size(inv_name) then
         page = page + 32
         toolmeta.page = page
-        --meta:set_string("formspec", chest_formspec(toolmeta, pos, page, inv_name))
+	did_update = true
       end        
     elseif field == "prev" then
       if page - 32 >= 1 then
         page = page - 32
         toolmeta.page = page
-        --meta:set_string("formspec", chest_formspec(toolmeta, pos, page, inv_name))
+	did_update = true
       end
     elseif field == "crafts" then
       toolmeta.crafts = value
+      inv_name = "main"
+      if value == "true" then
+        inv_name = "me_crafts"
+	local tab = {}
+	if net then
+	  if not net.process then
+	    net:reload_network()
+	  end
+	  for name,pos in pairs(net.autocrafters) do
+	    tab[#tab + 1] = ItemStack(name)
+	  end
+	  tab[#tab + 1] = ItemStack("")
+	  for name,pos in pairs(net.process) do
+	    tab[#tab + 1] = ItemStack(name)
+	  end
+	end
+	own_inv:set_size(inv_name, #tab)
+	own_inv:set_list(inv_name, tab)
+	toolmeta.inv_name = inv_name
+	page_max = math.floor(own_inv:get_size(inv_name) / 32) + 1
+	toolmeta.page_max = page_max
+	did_update = true
+      else
+	if toolmeta.query == "" then
+	  own_inv:set_size("me_crafts", 0)
+	  toolmeta.inv_name = inv_name
+	  page_max = math.floor(ctrl_inv:get_size(inv_name) / 32) + 1
+	  toolmeta.page_max = page_max
+	  did_update = true
+	end
+      end
+      if toolmeta.query ~= "" then
+	inv = own_inv
+	if inv_name == "main" then
+	  inv = ctrl_inv
+	end
+	local tab = {}
+	for i = 1, inv:get_size(inv_name) do
+	  local match = inv:get_stack(inv_name, i):get_name():find(toolmeta.query)
+	  if match then
+	    tab[#tab + 1] = inv:get_stack(inv_name, i)
+	  end
+	end
+	inv_name = "search"
+	own_inv:set_size(inv_name, #tab)
+	own_inv:set_list(inv_name, tab)
+	toolmeta.inv_name = inv_name
+	page_max = math.floor(own_inv:get_size(inv_name) / 32) + 1
+	toolmeta.page_max = page_max
+	did_update = true
+      end
     elseif field == "filter" then
       toolmeta.query = value
     elseif field == "search" then
@@ -233,7 +285,7 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
       toolmeta.query = ""
       toolmeta.crafts = "false"
       toolmeta.page_max = math.floor(inv:get_size(inv_name) / 32) + 1
-      --meta:set_string("formspec", chest_formspec(toolmeta, pos, 1, inv_name))
+      did_update = true
     elseif field == "tochest" then
     elseif field == "autocraft" then
       if tonumber(value) ~= nil then
@@ -245,6 +297,10 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
         me.autocraft(me.autocrafterCache, pos, net, own_inv, ctrl_inv, count)
       end
     end
+  end
+  if did_update then
+    minetest.show_formspec(user:get_player_name(), "microexpansion:remote_control",
+      chest_formspec(toolmeta, pos, page, inv_name))
   end
   toolstack:set_metadata(minetest.serialize(toolmeta))
   user:set_wielded_item(toolstack)
