@@ -208,6 +208,7 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
   local page = toolmeta.page
   local did_update = false
   local update_search = false
+  local do_autocraft = false
   for field, value in pairs(fields) do
     me.log("REMOTE: form "..field.." value "..value, "error")
     if field == "next" then
@@ -255,9 +256,14 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
     elseif field == "key_enter_field" and value == "autocraft" then
       local count = tonumber(toolmeta.autocraft)
       if not own_inv:get_stack("output", 1):is_empty() and count < math.pow(2,16) then
-        me.autocraft(me.autocrafterCache, pos, net, own_inv, ctrl_inv, count)
+        do_autocraft = true
       end
     end
+  end
+
+  if do_autocraft then
+    local count = tonumber(toolmeta.autocraft)
+    me.autocraft(me.autocrafterCache, pos, net, own_inv, ctrl_inv, count)
   end
 
   if update_search then
