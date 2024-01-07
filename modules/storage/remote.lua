@@ -116,7 +116,7 @@ minetest.register_tool("microexpansion:remote", {
       pos.z = pos.z - 1
       local net,cpos = me.get_connected_network(pos)
       if net then
-	minetest.chat_send_player(user:get_player_name(), "Connected to ME network, use left-click to use.")
+	minetest.chat_send_player(user:get_player_name(), "Connected to ME network, right-click to use.")
 	toolmeta.terminal = pos
 	local pinv = user:get_inventory()
 	pinv:set_size("recipe", 3*3)
@@ -133,6 +133,10 @@ minetest.register_tool("microexpansion:remote", {
     if not user or not user:is_player() or user.is_fake_player then return end
     local toolmeta = get_metadata(toolstack)
     local pos = toolmeta.terminal
+    if not pos then
+      minetest.chat_send_player(user:get_player_name(), "Left-click on ME block to connect to ME network.")
+      return
+    end
     local net = me.get_connected_network(pos)
     -- if not net then return end
 
