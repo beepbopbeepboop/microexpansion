@@ -3,7 +3,11 @@ local me = microexpansion
 local pipeworks_craft_time = 1
 
 function me.autocraft_next_start(net)
-  if net.pending then
+  -- We use machine reservations to allow simultaneous crafting jobs
+  -- todo: implement a limiter or a power consumption or 'crafting
+  -- cpus' for realism.
+  local parallel = true
+  if not parallel and net.pending then
     -- start subsequent autocrafting jobs sequentially.
     -- We really only need zero/not zero for build to queue actions or not
     return net.pending.time[net.pending.max_index]
@@ -87,11 +91,11 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
       max = math.min(max, count)
       substack:set_count(max)
       local step_time
-      built, step_time = build(net, cpos, inv, name, max, substack, sink, next_time)
+      built, step_time = build(net, cpos, inv, name, max, substack, sink, time)
       if not built then
         -- we are done, can't craft, so stop
       else
-        next_time = math.max(next_time, next_time + step_time)
+        next_time = math.max(next_time, time + step_time)
       end
       count = count - max
     end
