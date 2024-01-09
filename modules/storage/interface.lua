@@ -248,6 +248,25 @@ me.register_node("interface", {
         end
       end
     end
+    if net.process then
+      -- todo: This is a little slow, speed it up? Interface removal is infrequent.
+      for _, v in pairs(net.process) do
+        for k, ipos in pairs(v) do
+          if ipos.x == pos.x and ipos.y == pos.y and ipos.z == pos.z then
+            pos = ipos
+	    break
+          end
+        end
+      end
+      for name, v in pairs(net.process) do
+        for apos, ipos in pairs(v) do
+          if ipos == pos then
+	    me.log("INTERFACE: killing a mchine for "..name, "error")
+	    net.process[name][apos] = nil
+          end
+        end
+      end
+    end
   end,
   after_destruct = function(pos)
     me.send_event(pos,"disconnect")
