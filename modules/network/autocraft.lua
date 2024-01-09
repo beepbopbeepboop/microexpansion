@@ -109,6 +109,14 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
   if net.process and net.process[name] then
     local machines = net.process[name]
     for k, v in pairs(machines) do
+      local mname = minetest.get_node(k).name
+      if not me.block_to_typename_map[mname] then
+        -- There is no way this can be. Prune.
+	-- Would be nice if we had a way to notice blocks going away.
+	-- Maybe latch into on_destruct for them?
+	net.process[name][k] = nil
+        goto continue
+      end
       local i = #dat + 1
       dat[i] = {}
       dat[i].apos = k
@@ -118,6 +126,7 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
       if i == count then
         break
       end
+      ::continue::
     end
     me.log("INT: looking up output "..name, "error")
     local inputs = me.find_by_output(name)
@@ -147,9 +156,10 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
     --main_action_time = round((total+2)*dat[1].recip.time/speed) + 1
     --main_action_time = (total+1)*round(dat[1].recip.time/speed) -- one shy
     --main_action_time = total*dat[1].recip.time/speed + 2 -- 2 at 80 shy, 3 at 160 shy
-    local subtotal = math.ceil(total/#dat)
+    local subtotal = math.floor((total+#dat-1)/#dat)
     --main_action_time = subtotal*1.025*dat[1].recip.time/speed + 2 -- ok
-    main_action_time = math.ceil(subtotal*1.02*dat[1].recip.time/speed) + 1 -- too fast?
+    --main_action_time = math.ceil(subtotal*1.02*dat[1].recip.time/speed) + 1 -- too fast?
+    main_action_time = math.ceil(subtotal*1.02*dat[1].recip.time/speed) + 1.2 -- too fast?
     if second_output then
       second_output = ItemStack(second_output)
       second_output:set_count(second_output:get_count()*total)
@@ -193,7 +203,7 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
     end
     local craft_count = dat[1].ostack:get_count()
     local total = math.ceil(count/craft_count)
-    local subtotal = math.ceil(total/#dat)
+    local subtotal = math.floor((total+#dat-1)/#dat)
     main_action_time = subtotal * pipeworks_craft_time + 1
   else
     me.log("can't craft a "..name, "error")
@@ -298,10 +308,10 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
         local built, step_time = build(net, cpos, inv, name, subcount, inner_istack, dat[i].isink, time)
         if built then
 	  next_time[i] = math.max(next_time[i], time + step_time)
+	  final_step_time = math.max(final_step_time, step_time)
         else
 	  hasit = false
         end
-	final_step_time = math.max(final_step_time, step_time)
       end
       if hasit then
 	net.ac_status = net.ac_status .. time.." Craft "..count.." "..name.." in "..final_step_time.." seconds.\n"
@@ -374,9 +384,11 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
         me.log("ACTION: post craft for "..stack:get_name(), "error")
 	local inner_stack = stack
 	-- todo: prove the below is correct.
-	-- TODO: currently testing and fixing this with stainless steel crafting.
 	-- See extra below for how I think it fails.
 	inner_stack:set_count(craft_count*math.floor((total+i-1)/#dat))
+	if i == 1 and extra:get_count() > 0 then
+	  inner_stack:take_item(extra:get_count())
+	end
         me.log("TIMER: moving "..inner_stack:get_count().." "..stack:get_name(), "error")
         -- deal with output and replacements
 	local dst_stack = dat[i].rinv:remove_item("dst", inner_stack)
@@ -397,12 +409,12 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
 	    dat[i].rinv:add_item("dst", leftovers)
 	  end
 	end
-	if not extra:is_empty() and i == #dat then
+	if i == 1 and not extra:is_empty() then
 	  -- extra is once, not per machine. It will appear in the
-	  -- last machine as extra.
+	  -- first machine as extra.
 	  -- todo: extra I think is broken by switch the dst getter from being count based
 	  -- to being total*craft count based.  This leaves extra when we need to craft
-	  -- for a recipe that needs less than an even multiple of the craft_count.  Test.
+	  -- for a recipe that needs less than an even multiple of the craft_count.  Test, broken.
 	  dst_stack = dat[i].rinv:remove_item("dst", extra)
 	  if dst_stack:get_count() ~= extra:get_count() then
             me.log("wow, missing items that should have been crafted "..stack:get_name(), "error")
