@@ -11,7 +11,7 @@ end
 local function get_metadata(toolstack)
   local m = minetest.deserialize(toolstack:get_metadata())
   if not m then m = {} end
-  if not m.charge then m.charge = 100 end
+  if not m.charge then m.charge = 1000 end
   if not m.page then m.page = 1 end
   if not m.query then m.query = "" end
   if not m.crafts then m.crafts = "false" end
@@ -116,6 +116,7 @@ minetest.register_tool("microexpansion:remote", {
       pos.z = pos.z - 1
       local net,cpos = me.get_connected_network(pos)
       if net then
+        if not net:powered(user:get_player_name()) then return end
 	minetest.chat_send_player(user:get_player_name(), "Connected to ME network, right-click to use.")
 	toolmeta.terminal = pos
 	local pinv = user:get_inventory()
@@ -137,8 +138,7 @@ minetest.register_tool("microexpansion:remote", {
       minetest.chat_send_player(user:get_player_name(), "Left-click on ME block to connect to ME network.")
       return
     end
-    local net = me.get_connected_network(pos)
-    -- if not net then return end
+    local net,cpos = me.get_connected_network(pos)
 
     local charge_to_take = 100
 
@@ -152,6 +152,8 @@ minetest.register_tool("microexpansion:remote", {
       toolstack:set_metadata(minetest.serialize(toolmeta))
       technic.set_RE_wear(toolstack, toolmeta.charge, technic.power_tools[toolstack:get_name()])
     end
+
+    if net and not net:powered(user:get_player_name()) then return end
 
     local page = toolmeta.page
     local inv_name = toolmeta.inv_name
@@ -252,6 +254,7 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
       toolmeta.crafts = "false"
       toolmeta.page_max = math.floor(inv:get_size(inv_name) / 32) + 1
       update_search = true
+      did_update = true
     elseif field == "tochest" then
     elseif field == "autocraft" then
       if tonumber(value) ~= nil then

@@ -42,7 +42,25 @@ me.register_node("ctrl", {
       {-0.1875, -0.5, -0.1875, 0.1875, -0.25, 0.1875}, -- Bottom2
     },
   },
-  groups = { cracky = 1, me_connect = 1, },
+  groups = { cracky = 1, me_connect = 1,
+    -- for technic integration
+    technic_machine = 1, technic_hv = 1,
+    -- for on/off switch to conserve power
+    mesecon_effector_off = 1, mesecon = 2,
+  },
+  --HV_EU_demand = 10,
+  -- typical technic connections:
+  -- connect_sides = {"bottom", "front", "left", "right"},
+  --HV_EU_input = 23,
+  --HV_EU_supply = 144,
+  --HV_EU_demand = 44,
+  technic_run = function(pos, node)
+    --local meta = minetest.get_meta(pos)
+    -- quick cheat sheet for how to wire:
+    --meta:set_int("HV_EU_input", 23)
+    --meta:set_int("HV_EU_demand", 45)
+    --meta:set_int("HV_EU_supply", 1045)
+  end,
   connect_sides = "nobottom",
   me_update = function(pos,_,ev)
     local net = me.get_network(pos)
@@ -52,13 +70,30 @@ me.register_node("ctrl", {
     end
     net:update()
   end,
+  mesecons = {effector = {
+    action_on = function (pos, node)
+      local net = me.get_network(pos)
+      -- turn OFF on mese power
+      local meta = minetest.get_meta(pos)
+      meta:set_int("enabled", 0)
+      net:update_demand()
+    end,
+    action_off = function (pos, node)
+      local net = me.get_network(pos)
+      -- turn ON without mesepower
+      local meta = minetest.get_meta(pos)
+      meta:set_int("enabled", 1)
+      net:update_demand()
+    end
+  }},
   on_construct = function(pos)
     local meta = minetest.get_meta(pos)
     local net = network.new({controller_pos = pos})
     table.insert(me.networks,net)
     me.send_event(pos,"connect",{net=net})
 
-    meta:set_string("infotext", "Network Controller")
+    meta:set_int("enabled", 0)
+    net:update_demand()
   end,
   after_place_node = function(pos, player)
     local name = player:get_player_name()
@@ -168,3 +203,9 @@ me.register_machine("cable", {
     type = "conductor",
   },
 })
+
+if technic then
+   -- quick cheat sheet for how to wire:
+   -- producer receiver, producer_receiver, battery
+  technic.register_machine("HV", "microexpansion:ctrl", technic.receiver)
+end

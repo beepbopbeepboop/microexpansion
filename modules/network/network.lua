@@ -237,6 +237,7 @@ end
 
 function network:update()
   self:set_storage_space(true)
+  self:update_demand()
 end
 
 function network:get_inventory_name()
@@ -526,6 +527,52 @@ function network:load()
   end
 end
 
+-- Helper to check to see if the controller is on and powered.
+function network:powered(name)
+  local net = self
+  local meta = minetest.get_meta(net.controller_pos)
+  local run = meta:get_int("enabled") == 1
+  if not run then
+    minetest.chat_send_player(name, "Please enable by turning controller switch.")
+    return false
+  end
+  --me.log("REMOTE: power level input is "..meta:get_int("HV_EU_input").." and demand is "..meta:get_int("HV_EU_demand"), "error")
+  run = not technic or (meta:get_int("HV_EU_input") >= meta:get_int("HV_EU_demand"))
+  if not run then
+    minetest.chat_send_player(name, "Please provide HV power to ME controller.")
+    return false
+  end
+  return true
+end
+
+function network:update_demand()
+  local demand = 60
+  local pos = self.controller_pos
+  local meta = minetest.get_meta(pos)
+  local net = self
+  if meta:get_int("enabled") == 0 then
+    meta:set_int("HV_EU_demand", 0)
+    meta:set_string("infotext", "Disabled")
+    return
+  end
+  for ipos in me.connected_nodes(pos) do
+    local name = me.get_node(ipos).name
+    if name == "microexpansion:cable" then
+      demand = demand + 1
+    elseif name == "microexpansion:interface" then
+      local meta = minetest.get_meta(ipos)
+      local inventories = minetest.deserialize(meta:get_string("connected"))
+      demand = demand + #inventories * 10
+    else
+      demand = demand + 10
+    end
+    local name = meta:get_string("owner")
+    meta:set_string("infotext", "Network Controller (owned by "..name..")")
+  end
+  --me.log("NET: demand is "..demand, "error")
+  meta:set_int("HV_EU_demand", demand)
+end
+
 -- We don't save this data, rather we rewalk upon first use. If 1% of
 -- the people play per reboot, then this saves 99% of the work.
 -- Also, we don't actually read or write any of this data normally,
@@ -539,10 +586,12 @@ function network:reload_network()
   self.autocrafters_by_pos = {}
   self.process = {}
   for ipos in me.connected_nodes(self.controller_pos) do
-    if me.get_node(ipos).name == "microexpansion:interface" then
+    local name = me.get_node(ipos).name
+    if name == "microexpansion:interface" then
       me.reload_interface(self, ipos, nil)
     end
   end
+  self:update_demand()
 end
 
 function network:serialize()
