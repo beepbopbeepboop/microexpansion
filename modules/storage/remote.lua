@@ -140,7 +140,9 @@ minetest.register_tool("microexpansion:remote", {
     end
     local net,cpos = me.get_connected_network(pos)
 
-    local charge_to_take = 100
+    -- 25 to 1062 eu per operation, rich people pay for distance.
+    local distance = vector.distance(net.controller_pos, user:get_pos())
+    local charge_to_take = math.pow(math.log(distance),2) * 10
 
     if toolmeta.charge < charge_to_take then
       minetest.chat_send_player(user:get_player_name(), "No power left, recharge in technic battery.")
