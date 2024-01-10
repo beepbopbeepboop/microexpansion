@@ -60,6 +60,13 @@ me.register_node("ctrl", {
     --meta:set_int("HV_EU_input", 23)
     --meta:set_int("HV_EU_demand", 45)
     --meta:set_int("HV_EU_supply", 1045)
+    local net = me.get_network(pos)
+    if not net then
+      local meta = minetest.get_meta(pos)
+      meta:set_int("HV_EU_input", 0)
+      return
+    end
+    net:update_demand()
   end,
   connect_sides = "nobottom",
   me_update = function(pos,_,ev)
