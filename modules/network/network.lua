@@ -537,7 +537,7 @@ function network:powered(name)
     return false
   end
   --me.log("REMOTE: power level input is "..meta:get_int("HV_EU_input").." and demand is "..meta:get_int("HV_EU_demand"), "error")
-  run = not technic or (meta:get_int("HV_EU_input") >= meta:get_int("HV_EU_demand"))
+  run = not technic or (meta:get_int("HV_EU_input") >= meta:get_int("HV_EU_demand") and meta:get_int("HV_EU_input") > 0)
   if not run then
     minetest.chat_send_player(name, "Please provide HV power to ME controller.")
     return false
@@ -562,7 +562,7 @@ function network:update_demand()
     elseif name == "microexpansion:interface" then
       local meta = minetest.get_meta(ipos)
       local inventories = minetest.deserialize(meta:get_string("connected"))
-      demand = demand + #inventories * 10
+      demand = demand + #inventories * 10 + 20
     else
       demand = demand + 10
     end
