@@ -56,11 +56,40 @@ function me.walk_connected(pos)
   return nodes
 end
 
+local function chest_formspec(pos)
+  local net = me.get_connected_network(pos)
+  local list
+  list = [[
+      list[context;import;0,0.3;9,1]
+      list[context;export;0,0.3;9,1]
+      list[current_player;main;0,3.5;8,1;]
+      list[current_player;main;0,4.73;8,3;8]
+      listring[current_name;import]
+      listring[current_player;main]
+  ]]
+
+  if net and not net:powered() then
+    list = "label[3,2;" .. minetest.colorize("red", "No power!") .. "]"
+  end
+
+  local formspec =
+      "size[9,7.5]"..
+      microexpansion.gui_bg ..
+      microexpansion.gui_slots ..
+      "label[0,-0.23;ME Interface]" ..
+      list
+  return formspec
+end
+
 local function update(pos,_,ev)
+  --me.log("INTERFACE: got event "..((ev and ev.type) or "<null>"), "error")
   if ev.type == "connect" then
     -- net.update_counts()
   elseif ev.type == "disconnect" then
     --
+  elseif ev.type == "power" then
+    local int_meta = minetest.get_meta(pos)
+    int_meta:set_string("formspec", chest_formspec(pos))
   end
 end
 
@@ -95,7 +124,7 @@ function me.reload_interface(net, pos, doinventories)
   local inv = int_meta:get_inventory()
   local inventories = minetest.deserialize(int_meta:get_string("connected"))
   -- not appropriate
-  -- me.send_event(pos,"connect")
+  -- me.send_event(pos, "connect")
   int_meta:set_string("infotext", "chests: "..#inventories)
   if not net.counts then
     net.counts = {}
@@ -156,20 +185,7 @@ me.register_node("interface", {
   me_update = update,
   on_construct = function(pos)
     local int_meta = minetest.get_meta(pos)
-    int_meta:set_string("formspec",
-      "size[9,7.5]"..
-      microexpansion.gui_bg ..
-      microexpansion.gui_slots ..
-    [[
-      label[0,-0.23;ME Interface]
-      list[context;import;0,0.3;9,1]
-      list[context;export;0,0.3;9,1]
-      list[current_player;main;0,3.5;8,1;]
-      list[current_player;main;0,4.73;8,3;8]
-      listring[current_name;import]
-      listring[current_player;main]
-      field_close_on_enter[filter;false]
-    ]])
+    int_meta:set_string("formspec", chest_formspec(pos))
     local inv = int_meta:get_inventory()
     inv:set_size("export", 3)
     inv:set_size("import", 3)
@@ -182,6 +198,7 @@ me.register_node("interface", {
       return
     end
     me.reload_interface(net, pos, true)
+    net:update_demand()
   end,
   can_dig = function(pos)
     local meta = minetest.get_meta(pos)
@@ -267,9 +284,10 @@ me.register_node("interface", {
         end
       end
     end
+    net:update_demand()
   end,
   after_destruct = function(pos)
-    me.send_event(pos,"disconnect")
+    me.send_event(pos, "disconnect")
   end,
   allow_metadata_inventory_put = function(pos, listname, index, stack)
     return stack:get_count()

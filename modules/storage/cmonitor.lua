@@ -63,6 +63,12 @@ local function chest_formspec(pos, start_id, listname, page_max, q)
       "/" .. page_max .."]"
   end
 
+  if net and not net:powered() then
+    list = "label[3,2;" .. minetest.colorize("red", "No power!") .. "]"
+    buttons = ""
+    page_number = ""
+  end
+
   return [[
     size[9,12.5]
   ]]..
@@ -126,13 +132,13 @@ me.register_node("cmonitor", {
     local own_inv = meta:get_inventory()
 
     local net = me.get_connected_network(pos)
-    me.send_event(pos,"connect",{net=net})
+    me.send_event(pos, "connect", {net=net})
     if net then
       update_chest(pos)
     end
   end,
   after_destruct = function(pos)
-    me.send_event(pos,"disconnect")
+    me.send_event(pos, "disconnect")
   end,
   can_dig = function(pos, player)
     return true

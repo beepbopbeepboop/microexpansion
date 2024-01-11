@@ -55,18 +55,24 @@ me.register_node("ctrl", {
   --HV_EU_supply = 144,
   --HV_EU_demand = 44,
   technic_run = function(pos, node)
-    --local meta = minetest.get_meta(pos)
+    local meta = minetest.get_meta(pos)
     -- quick cheat sheet for how to wire:
     --meta:set_int("HV_EU_input", 23)
     --meta:set_int("HV_EU_demand", 45)
     --meta:set_int("HV_EU_supply", 1045)
     local net = me.get_network(pos)
     if not net then
+      -- This is impossible, delete?
       local meta = minetest.get_meta(pos)
       meta:set_int("HV_EU_input", 0)
       return
     end
-    net:update_demand()
+    if net.input ~= meta:get_int("HV_EU_input") then
+      net.input = meta:get_int("HV_EU_input")
+      me.log("EU: input changed to "..net.input, "error")
+      -- This only needs to see changes to inbound power levels.
+      me.send_event(pos, "power")
+    end
   end,
   connect_sides = "nobottom",
   me_update = function(pos,_,ev)
@@ -80,12 +86,14 @@ me.register_node("ctrl", {
   mesecons = {effector = {
     action_on = function (pos, node)
       local net = me.get_network(pos)
+      --me.log("SWITCH: on", "error")
       -- turn OFF on mese power
       local meta = minetest.get_meta(pos)
       meta:set_int("enabled", 0)
       net:update_demand()
     end,
     action_off = function (pos, node)
+      --me.log("SWITCH: off", "error")
       local net = me.get_network(pos)
       -- turn ON without mesepower
       local meta = minetest.get_meta(pos)
@@ -199,11 +207,13 @@ me.register_machine("cable", {
       if ev.type ~= "disconnect" then return end
     end
     --maybe this shouldn't be called on every update
+    if false then
     local meta = minetest.get_meta(pos)
     if me.get_connected_network(pos) then
       meta:set_string("infotext", "Network connected")
     else
       meta:set_string("infotext", "No Network")
+    end
     end
   end,
   machine = {

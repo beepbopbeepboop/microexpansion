@@ -230,7 +230,7 @@ local function take_all(pos,net)
   end
 
   net:update()
-  me.send_event(pos,"items")
+  me.send_event(pos, "items")
 end
 
 local function add_all(pos,net)
@@ -256,7 +256,7 @@ local function add_all(pos,net)
   end
 
   net:update()
-  me.send_event(pos,"items",{net = net})
+  me.send_event(pos, "items", {net = net})
 end
 
 function me.disconnect_drive(pos,ncpos)
@@ -354,7 +354,7 @@ microexpansion.register_node("drive", {
     ]])
     local inv = meta:get_inventory()
     inv:set_size("main", 10)
-    me.send_event(pos,"connect")
+    me.send_event(pos, "connect")
   end,
   can_dig = function(pos, player)
     if minetest.is_protected(pos, player) then
@@ -365,7 +365,7 @@ microexpansion.register_node("drive", {
     return inv:is_empty("main")
   end,
   after_destruct = function(pos)
-   me.send_event(pos,"disconnect")
+   me.send_event(pos, "disconnect")
   end,
   allow_metadata_inventory_put = function(pos, _, _, stack, player)
     if minetest.is_protected(pos, player)
@@ -375,7 +375,7 @@ microexpansion.register_node("drive", {
     return 1
   end,
   on_metadata_inventory_put = function(pos, _, _, stack)
-    me.send_event(pos,"item_cap")
+    me.send_event(pos, "item_cap")
     local network = me.get_connected_network(pos)
     if network == nil then
       return
@@ -384,7 +384,7 @@ microexpansion.register_node("drive", {
     local items = minetest.deserialize(stack:get_meta():get_string("items"))
     if items == nil then
       print("no items")
-      me.send_event(pos,"items",{net=network})
+      me.send_event(pos, "items", {net=network})
       return
     end
     -- network:set_storage_space(#items)
@@ -393,7 +393,7 @@ microexpansion.register_node("drive", {
       me.insert_item(stack, network, ctrl_inv, "main")
     end
     network:set_storage_space(true)
-    me.send_event(pos,"items",{net=network})
+    me.send_event(pos, "items", {net=network})
   end,
   allow_metadata_inventory_take = function(pos,_,_,stack, player) --args: pos, listname, index, stack, player
     if minetest.is_protected(pos, player) then
@@ -408,7 +408,7 @@ microexpansion.register_node("drive", {
     if network == nil then
       return
     end
-    me.send_event(pos,"item_cap",{net=network})
+    me.send_event(pos, "item_cap", {net=network})
     local ctrl_inv = network:get_inventory()
     local items = minetest.deserialize(stack:get_meta():get_string("items"))
     if items == nil then
@@ -427,6 +427,6 @@ microexpansion.register_node("drive", {
     --print(stack:to_string())
 
     network:update()
-    me.send_event(pos,"items",{net=network})
+    me.send_event(pos, "items", {net=network})
   end,
 })

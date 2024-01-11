@@ -529,48 +529,59 @@ end
 
 -- Helper to check to see if the controller is on and powered.
 function network:powered(name)
+  if not name and minetest.localplayer then
+    -- this works for the client side only
+    name = minetest.localplayer:get_name()
+    -- todo: on the server side, how do we get the player name?
+  end
   local net = self
   local meta = minetest.get_meta(net.controller_pos)
   local run = meta:get_int("enabled") == 1
   if not run then
-    minetest.chat_send_player(name, "Please enable by turning controller switch.")
+    if name then minetest.chat_send_player(name, "Please enable by turning controller switch.") end
     return false
   end
-  --me.log("REMOTE: power level input is "..meta:get_int("HV_EU_input").." and demand is "..meta:get_int("HV_EU_demand"), "error")
+  me.log("NETWORK: powered power level input is "..meta:get_int("HV_EU_input").." and demand is "..meta:get_int("HV_EU_demand"), "error")
   run = not technic or (meta:get_int("HV_EU_input") >= meta:get_int("HV_EU_demand") and meta:get_int("HV_EU_input") > 0)
   if not run then
-    minetest.chat_send_player(name, "Please provide HV power to ME controller.")
+    if name then minetest.chat_send_player(name, "Please provide HV power to ME controller.") end
     return false
   end
   return true
 end
 
 function network:update_demand()
-  local demand = 60
   local pos = self.controller_pos
   local meta = minetest.get_meta(pos)
   local net = self
   if meta:get_int("enabled") == 0 then
-    meta:set_int("HV_EU_demand", 0)
-    meta:set_string("infotext", "Disabled")
+    if meta:get_int("HV_EU_demand") ~= 0 then
+      meta:set_int("HV_EU_demand", 0)
+      meta:set_string("infotext", "Disabled")
+      me.send_event(pos, "power")
+    end
     return
   end
+  local demand = 60  -- controller is 60
   for ipos in me.connected_nodes(pos) do
     local name = me.get_node(ipos).name
     if name == "microexpansion:cable" then
-      demand = demand + 1
+      demand = demand + 1 -- cables are 1
     elseif name == "microexpansion:interface" then
       local meta = minetest.get_meta(ipos)
       local inventories = minetest.deserialize(meta:get_string("connected"))
-      demand = demand + #inventories * 10 + 20
+      demand = demand + #inventories * 10 + 20 -- interfaces are 20 and 10 for each machine or inventory
     else
-      demand = demand + 10
+      demand = demand + 10 -- everything else is 10
     end
+  end
+  if meta:get_int("HV_EU_demand") ~= demand then
     local name = meta:get_string("owner")
     meta:set_string("infotext", "Network Controller (owned by "..name..")")
+    me.log("NET: demand changed to "..demand, "error")
+    meta:set_int("HV_EU_demand", demand)
+    me.send_event(pos, "power")
   end
-  --me.log("NET: demand is "..demand, "error")
-  meta:set_int("HV_EU_demand", demand)
 end
 
 -- We don't save this data, rather we rewalk upon first use. If 1% of

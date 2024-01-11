@@ -89,6 +89,12 @@ local function chest_formspec(pos, start_id, listname, page_max, q, c)
       "/" .. page_max .."]"
   end
 
+  if net and not net:powered() then
+    list = "label[3,2;" .. minetest.colorize("red", "No power!") .. "]"
+    buttons = ""
+    page_number = ""
+  end
+
   return [[
     size[9,12.5]
   ]]..
@@ -105,6 +111,7 @@ local function chest_formspec(pos, start_id, listname, page_max, q, c)
 end
 
 local function update_chest(pos,_,ev)
+  --me.log("CTERM: got event "..((ev and ev.type) or "<null>"), "error")
   --for now all events matter
 
   local net = me.get_connected_network(pos)
@@ -259,7 +266,7 @@ end
 
 
 function me.register_output_to_inputs(output, inputs)
-  me.log("REG: output "..output.." from inputs "..dump(inputs))
+  --me.log("REG: output "..output.." from inputs "..dump(inputs))
   me.map_output_to_inputs[output] = inputs
 end
 
@@ -455,7 +462,6 @@ me.register_node("cterminal", {
   me_update = update_chest,
   on_construct = function(pos)
     local meta = minetest.get_meta(pos)
-    meta:set_string("formspec", chest_formspec(pos, 1))
     meta:set_string("inv_name", "none")
     meta:set_int("page", 1)
 
@@ -465,13 +471,11 @@ me.register_node("cterminal", {
     own_inv:set_size("output", 1)
 
     local net = me.get_connected_network(pos)
-    me.send_event(pos,"connect",{net=net})
-    if net then
-      update_chest(pos)
-    end
+    me.send_event(pos, "connect", {net=net})
+    update_chest(pos)
   end,
   after_destruct = function(pos)
-    me.send_event(pos,"disconnect")
+    me.send_event(pos, "disconnect")
   end,
   can_dig = function(pos, player)
     local meta = minetest.get_meta(pos)
@@ -727,8 +731,8 @@ me.register_node("cterminal", {
       meta:set_string("formspec", chest_formspec(pos, page - 32, inv_name, page_max, fields.filter, crafts))
     elseif fields.crafts then
       meta:set_int("page", 1)
-      -- me.log("CRAFT: craftables: "..dump(net and net.process), "error")
-      me.log("CRAFT: got fields: "..dump(fields), "error")
+      --me.log("CRAFT: craftables: "..dump(net and net.process), "error")
+      --me.log("CRAFT: got fields: "..dump(fields), "error")
       inv_name = "main"
       if fields.crafts == "true" then
 	crafts = true
@@ -783,7 +787,7 @@ me.register_node("cterminal", {
       end
     elseif fields.search or fields.key_enter_field == "filter" then
       own_inv:set_size("search", 0)
-      me.log("CRAFT: got fields: "..dump(fields), "error")
+      --me.log("CRAFT: got fields: "..dump(fields), "error")
       meta:set_int("page", 1)
       inv_name = "main"
       inv = ctrl_inv
@@ -809,7 +813,7 @@ me.register_node("cterminal", {
 	meta:set_string("formspec", chest_formspec(pos, 1, inv_name, page_max, fields.filter, crafts))
       end
     elseif fields.clear then
-      me.log("CRAFT: got fields: "..dump(fields), "error")
+      --me.log("CRAFT: got fields: "..dump(fields), "error")
       own_inv:set_size("search", 0)
       own_inv:set_size("crafts", 0)
       meta:set_int("page", 1)

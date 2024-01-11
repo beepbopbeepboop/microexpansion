@@ -59,6 +59,12 @@ local function chest_formspec(pos, start_id, listname, page_max, q)
       "/" .. page_max .."]"
   end
 
+  if net and not net:powered() then
+    list = "label[3,2;" .. minetest.colorize("red", "No power!") .. "]"
+    buttons = ""
+    page_number = ""
+  end
+
   return [[
     size[9,9.5]
   ]]..
@@ -117,7 +123,6 @@ me.register_node("term", {
   me_update = update_chest,
   on_construct = function(pos)
     local meta = minetest.get_meta(pos)
-    meta:set_string("formspec", chest_formspec(pos, 1))
     meta:set_string("inv_name", "none")
     meta:set_int("page", 1)
 
@@ -125,13 +130,11 @@ me.register_node("term", {
     own_inv:set_size("src", 1)
 
     local net = me.get_connected_network(pos)
-    me.send_event(pos,"connect",{net=net})
-    if net then
-      update_chest(pos)
-    end
+    me.send_event(pos, "connect", {net=net})
+    update_chest(pos)
   end,
   after_destruct = function(pos)
-    me.send_event(pos,"disconnect")
+    me.send_event(pos, "disconnect")
   end,
   allow_metadata_inventory_put = function(pos, listname, index, stack, player)
     -- TODO: Check capacity, only allow if room
