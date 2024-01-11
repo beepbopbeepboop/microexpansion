@@ -60,6 +60,8 @@ local function chest_formspec(pos, start_id, listname, page_max, q, c)
 	listring[current_player;main]
 	listring[context;output]
 	listring[current_player;main]
+	listring[context;search]
+	listring[current_player;main]
       ]]
       buttons = [[
 	button[3.56,4.35;1.8,0.9;tochest;To Drive]
