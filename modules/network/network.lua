@@ -83,7 +83,7 @@ function network:get_access_level(player)
 	if not player then
 		return self.default_access_level
 	elseif has_bypass then
-		return me.constants.access_levels.full
+		return me.constants.security.access_levels.full
 	elseif type(player) == "string" then
 		name = player
 	else
