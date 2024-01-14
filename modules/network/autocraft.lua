@@ -259,10 +259,8 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
       replace = false
       break
     end
-    -- Don't consume the last item by autocrafting
-    istack:set_count(count+1)
-    local hasit = inv:contains_item("main", istack)
     istack:set_count(count)
+    local hasit = inv:contains_item("main", istack)
     me.log("ac checking "..name, "error")
     if hasit then
       me.log("ac grabbing "..name, "error")
@@ -565,8 +563,7 @@ function me.autocraft(autocrafterCache, cpos, net, linv, inv, count)
       replace = false
       break
     end
-    -- Don't consume the last item by autocrafting
-    stack:set_count(count+1)
+    stack:set_count(count)
     replace = replace and inv:contains_item("main", stack)
   end
   if replace then
