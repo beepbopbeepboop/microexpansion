@@ -1,6 +1,10 @@
 -- Interoperability file for drawers support.
 local me = microexpansion
 
+local S = function(d)
+  return d
+end
+
 me.register_inventory("drawers:wood1", function(net, ctrl_inv, int_meta, n, pos, doinventories)
   if not doinventories then return end
   local c = drawers.drawer_get_content(n.pos, "")
@@ -37,3 +41,10 @@ end)
 me.register_inventory("drawers:controller", function(net, ctrl_inv, int_meta, n, pos)
   -- inv:add_item("src", ItemStack("default:stone"))
 end)
+
+drawers.register_drawer_upgrade("microexpansion:upgrade_me64k", {
+  description = S("Microexpansion Drawer Upgrade (x64*4)"),
+  inventory_image = "drawers_upgrade_mithril.png",
+  groups = {drawer_upgrade = 8000},
+  recipe_item = "microexpansion:cell_64k"
+})
