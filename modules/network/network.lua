@@ -89,7 +89,7 @@ function network:get_access_level(player)
 	else
 		name = player:get_player_name()
 	end
-	if not self.access or not  then
+	if not self.access and not has_bypass then
 		return self.default_access_level
 	end
 	return self.access[name] or self.default_access_level
