@@ -485,7 +485,8 @@ function me.later(net, cpos, action, time)
     -- bubble sort the entry back to the right spot
     while i > 1 do
       -- me.log("TIME ds: "..i.." "..net.pending.time[i].." "..net.pending.time[i-1], "error")
-      if net.pending.time[i] < net.pending.time[i-1] then
+      if  tonumber(net.pending.time[i]) and tonumber(net.pending.time[i-1])
+          and net.pending.time[i] < net.pending.time[i-1] then
         -- if out of order, swap.  This works as previously the list was sorted
         local t = net.pending.time[i-1]
         net.pending.time[i-1] = net.pending.time[i]
