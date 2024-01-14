@@ -562,7 +562,7 @@ function network:update_demand()
     end
     return
   end
-  local demand = 60  -- controller is 60
+  local demand = 120  -- controller is 120
   for ipos in me.connected_nodes(pos) do
     local name = me.get_node(ipos).name
     if name == "microexpansion:cable" then
@@ -570,9 +570,9 @@ function network:update_demand()
     elseif name == "microexpansion:interface" then
       local meta = minetest.get_meta(ipos)
       local inventories = minetest.deserialize(meta:get_string("connected"))
-      demand = demand + #inventories * 10 + 20 -- interfaces are 20 and 10 for each machine or inventory
+      demand = demand + #inventories * 20 + 40 -- interfaces are 40 and 20 for each machine or inventory
     else
-      demand = demand + 10 -- everything else is 10
+      demand = demand + 20 -- everything else is 20
     end
   end
   if meta:get_int("HV_EU_demand") ~= demand then
