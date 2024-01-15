@@ -3,33 +3,6 @@ me.networks    = {}
 local networks = me.networks
 local path     = me.get_module_path("network")
 
---deprecated: use ItemStack(x) instead
---[[
-local function split_stack_values(stack)
-  if type(stack) == "string" then
-    local split_string = stack:split(" ")
-    if (#split_string < 1) then
-      return "",0,0,nil
-    end
-    local stack_name = split_string[1]
-    if (#split_string < 2) then
-      return stack_name,1,0,nil
-    end
-    local stack_count = tonumber(split_string[2])
-    if (#split_string < 3) then
-      return stack_name,stack_count,0,nil
-    end
-    local stack_wear = tonumber(split_string[3])
-    if (#split_string < 4) then
-      return stack_name,stack_count,stack_wear,nil
-    end
-    return stack_name,stack_count,stack_wear,true
-  else
-    return stack:get_name(), stack:get_count(), stack:get_wear(), stack:get_meta()
-  end
-end
---]]
-
 local annotate_large_stack = function(stack, count)
   local description = minetest.registered_items[stack:get_name()]
   if description then
