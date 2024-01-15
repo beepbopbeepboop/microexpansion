@@ -72,6 +72,14 @@ function me.reserve(net, pos, original_start, length)
   return start
 end
 
+local length = function(a)
+  local count = 0
+  for k,v in pairs(a) do
+    count = count + 1
+  end
+  return count
+end
+
 -- Testing: HV solar is realiable, big loans are screwy.
 -- HV batteries are realiable.
 local function build(net, cpos, inv, name, count, stack, sink, time)
@@ -83,6 +91,12 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
     -- it only has 12 outputs.
     max = stack:get_stack_max()*12
   end
+  if net.process and net.process[name] then
+    max = max * length(net.process[name])
+  elseif net.autocrafters[name] then
+    max = max * length(net.autocrafters[name])
+  end
+  me.log("AC: max is "..max , "error")
   if max and count > max then
     local next_time = time
     local built = true
@@ -198,7 +212,8 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
       end
     end
     -- Consider looking up the recipe and finding the replacements that way.
-    if name == "technic:copper_coil" or name == "technic:control_logic_unit" then
+    if name == "technic:copper_coil" or name == "technic:control_logic_unit"
+       or name == "technic:solar_panel" then
       second_output = ItemStack("basic_materials:empty_spool 999")
     end
     local craft_count = dat[1].ostack:get_count()
@@ -265,7 +280,7 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
     if hasit then
       me.log("ac grabbing "..name, "error")
       local grabbed = me.remove_item(net, inv, "main", istack)
-      if grabbed then
+      if grabbed and grabbed:get_count() == count then
         me.log("ac grabbed "..name, "error")
 	net.ac_status = net.ac_status .. time.." Grabbed "..count.." "..name..".\n"
 	local slot = inv:get_size("ac")+1
@@ -288,6 +303,10 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
 	  inv:set_stack("ac", slot, stack)
 	end] = name
 	-- and then something moves the size of ac back to before we started
+      else
+	me.log("ac could not grab "..count.." "..name, "error")
+	net.ac_status = net.ac_status .. time.." Could not grab "..count.." "..name..".\n"
+	hasit = false
       end
     else
       -- Try and autocraft it
