@@ -4,8 +4,6 @@
 local me = microexpansion
 local substitute_basic_materials = microexpansion.settings.simple_craft == true or not minetest.get_modpath("basic_materials")
 
-local gold_wire_recipe = nil
-
 if minetest.get_modpath("mcl_core") then
 	gold_wire_recipe = {
 		{ 2, {

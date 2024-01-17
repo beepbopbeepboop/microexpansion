@@ -4,9 +4,6 @@ local me = microexpansion
 
 -- custom items that are used by multiple devices
 
-local steel_infused_obsidian_ingot_recipe = nil
-local machine_casing_recipe = nil
-
 if minetest.get_modpath("mcl_core") then
 	steel_infused_obsidian_ingot_recipe = {
 		{ 2, {

@@ -79,14 +79,17 @@ end
 
 function network:get_access_level(player)
 	local name
+	local has_bypass = minetest.check_player_privs(player, "protection_bypass")
 	if not player then
 		return self.default_access_level
+	elseif has_bypass then
+		return me.constants.security.access_levels.full
 	elseif type(player) == "string" then
 		name = player
 	else
 		name = player:get_player_name()
 	end
-	if not self.access then
+	if not self.access and not has_bypass then
 		return self.default_access_level
 	end
 	return self.access[name] or self.default_access_level
