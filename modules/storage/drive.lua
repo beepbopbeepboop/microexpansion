@@ -349,13 +349,14 @@ microexpansion.register_node("drive", {
    me.send_event(pos,"disconnect")
   end,
   allow_metadata_inventory_put = function(pos, _, _, stack, player)
+    local name = player:get_player_name()
     local network = me.get_connected_network(pos)
     if network then
       if network:get_access_level(player) < access_level.interact then
         return 0
       end
-    elseif minetest.is_protected(pos, player) then
-      minetest.record_protection_violation(pos, player)
+    elseif minetest.is_protected(pos, name) then
+      minetest.record_protection_violation(pos, name)
       return 0
     end
     if minetest.get_item_group(stack:get_name(), "microexpansion_cell") == 0 then
@@ -384,14 +385,15 @@ microexpansion.register_node("drive", {
     me.send_event(pos,"items",{net=network})
   end,
   allow_metadata_inventory_take = function(pos,_,_,stack, player) --args: pos, listname, index, stack, player
+    local name = player:get_player_name()
     local network = me.get_connected_network(pos)
     if network then
       write_drive_cells(pos,network)
       if network:get_access_level(player) < access_level.interact then
         return 0
       end
-    elseif minetest.is_protected(pos, player) then
-      minetest.record_protection_violation(pos, player)
+    elseif minetest.is_protected(pos, name) then
+      minetest.record_protection_violation(pos, name)
       return 0
     end
     return stack:get_count()
