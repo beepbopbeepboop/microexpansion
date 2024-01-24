@@ -66,81 +66,81 @@ dofile(path.."/network.lua") -- Network Management
 
 -- generate iterator to find all connected nodes
 function me.connected_nodes(start_pos,include_ctrl)
-	-- nodes to be checked
-	local open_list = {{pos = start_pos}}
-	-- nodes that were checked
-	local closed_set = {}
-	-- local connected nodes function to reduce table lookups
-	local adjacent_connected_nodes = me.network.adjacent_connected_nodes
-	-- return the generated iterator
-	return function ()
-		-- start looking for next pos
-		local open = false
-		-- pos to be checked
-		local current
-		-- find next unclosed
-		while not open do
-			-- get unchecked pos
-			current = table.remove(open_list)
-			-- none are left
-			if current == nil then return end
-			-- assume it's open
-			open = true
-			-- check the closed positions
-			for _,closed in pairs(closed_set) do
-				-- if current is unclosed
-				if vector.equals(closed,current.pos) then
-					--found one was closed
-					open = false
-				end
-			end
-		end
-		-- get all connected nodes
-		local nodes = adjacent_connected_nodes(current.pos,include_ctrl)
-		-- iterate through them
-		for _,n in pairs(nodes) do
-			-- mark position to be checked
-			table.insert(open_list,n)
-		end
-		-- add this one to the closed set
-		table.insert(closed_set,current.pos)
-		-- return the one to be checked
-		return current.pos,current.name
-	end
+  -- nodes to be checked
+  local open_list = {{pos = start_pos}}
+  -- nodes that were checked
+  local closed_set = {}
+  -- local connected nodes function to reduce table lookups
+  local adjacent_connected_nodes = me.network.adjacent_connected_nodes
+  -- return the generated iterator
+  return function ()
+    -- start looking for next pos
+    local open = false
+    -- pos to be checked
+    local current
+    -- find next unclosed
+    while not open do
+      -- get unchecked pos
+      current = table.remove(open_list)
+      -- none are left
+      if current == nil then return end
+      -- assume it's open
+      open = true
+      -- check the closed positions
+      for _,closed in pairs(closed_set) do
+        -- if current is unclosed
+        if vector.equals(closed,current.pos) then
+          --found one was closed
+          open = false
+        end
+      end
+    end
+    -- get all connected nodes
+    local nodes = adjacent_connected_nodes(current.pos,include_ctrl)
+    -- iterate through them
+    for _,n in pairs(nodes) do
+      -- mark position to be checked
+      table.insert(open_list,n)
+    end
+    -- add this one to the closed set
+    table.insert(closed_set,current.pos)
+    -- return the one to be checked
+    return current.pos,current.name
+  end
 end
 
 -- get network connected to position
 function me.get_connected_network(start_pos)
-	for npos,nn in me.connected_nodes(start_pos,true) do
-		if nn == "microexpansion:ctrl" then
-			local source = minetest.get_meta(npos):get_string("source")
-			local network
-			if source == "" then
-				network = me.get_network(npos)
-			else
-				network = me.get_network(vector.from_string(source))
-			end
-			if network then
-				return network,npos
-			end
-		end
-	end
+  for npos,nn in me.connected_nodes(start_pos,true) do
+    if nn == "microexpansion:ctrl" then
+      local source = minetest.get_meta(npos):get_string("source")
+      local network
+      if source == "" then
+        network = me.get_network(npos)
+      else
+        network = me.get_network(vector.from_string(source))
+      end
+      if network then
+        return network,npos
+      end
+    end
+  end
 end
 
 function me.promote_controller(start_pos,net)
-	local promoted = false
-	for npos,nn in me.connected_nodes(start_pos,true) do
-		if nn == "microexpansion:ctrl" and npos ~= start_pos then
-			if promoted then
-				minetest.get_meta(npos):set_string("source", promoted)
-			else
-				promoted = vector.to_string(npos)
-				minetest.get_meta(npos):set_string("source", "")
-				net.controller_pos = npos
-			end
-		end
-	end
-	return promoted and true or false
+  local promoted = false
+  for npos,nn in me.connected_nodes(start_pos,true) do
+    if nn == "microexpansion:ctrl" and npos ~= start_pos then
+      if promoted then
+        minetest.get_meta(npos):set_string("source", promoted)
+      else
+        promoted = vector.to_string(npos)
+        minetest.get_meta(npos):set_string("source", "")
+        net.controller_pos = npos
+      end
+    end
+  end
+  return promoted and true or false
 end
 
 function me.update_connected_machines(start_pos,event,include_start)
@@ -159,7 +159,7 @@ function me.update_connected_machines(start_pos,event,include_start)
     if include_start or not vector.equals(npos,start_pos) then
       me.update_node(npos,ev)
     end
-	end
+  end
 end
 
 function me.send_event(spos,type,data)
@@ -173,13 +173,13 @@ function me.send_event(spos,type,data)
 end
 
 function me.get_network(pos)
-	for i,net in pairs(networks) do
-		if net.controller_pos then
-			if vector.equals(pos, net.controller_pos) then
-				return net,i
-			end
-		end
-	end
+  for i,net in pairs(networks) do
+    if net.controller_pos then
+      if vector.equals(pos, net.controller_pos) then
+        return net,i
+      end
+    end
+  end
 end
 
 dofile(path.."/ctrl.lua") -- Controller/wires
@@ -187,30 +187,30 @@ dofile(path.."/security.lua") --Security Terminal
 
 -- load networks
 function me.load()
-	local res = storage:get_string("networks")
-	if res == "" then
-		local f = io.open(me.worldpath.."/microexpansion_networks", "r")
-		if f then
-			me.log("loading network data from file","action")
-			res = minetest.deserialize(f:read("*all"))
-			f:close()
-		else
-			me.log("no network data loaded","action")
-			return
-		end
-	else
-		me.log("loading network data from mod storage","action")
-		res = minetest.deserialize(res)
-	end
-	if type(res) == "table" then
-		for _,n in pairs(res) do
-		 local net = me.network.new(n)
-		 net:load()
-		 table.insert(me.networks,net)
-		end
-	else
-		me.log("network data in unexpected format","error")
-	end
+  local res = storage:get_string("networks")
+  if res == "" then
+    local f = io.open(me.worldpath.."/microexpansion_networks", "r")
+    if f then
+      me.log("loading network data from file","action")
+      res = minetest.deserialize(f:read("*all"))
+      f:close()
+    else
+      me.log("no network data loaded","action")
+      return
+    end
+  else
+    me.log("loading network data from mod storage","action")
+    res = minetest.deserialize(res)
+  end
+  if type(res) == "table" then
+    for _,n in pairs(res) do
+     local net = me.network.new(n)
+     net:load()
+     table.insert(me.networks,net)
+    end
+  else
+    me.log("network data in unexpected format","error")
+  end
 end
 
 -- load now
@@ -222,35 +222,35 @@ function me.save()
   for _,v in pairs(me.networks) do
     table.insert(data,v:serialize())
   end
-	if storage then
-		me.log("saving network data to mod storage","info")
-		storage:set_string("networks", minetest.serialize(data))
-	else
-		me.log("saving network data to file","info")
-		local f = io.open(me.worldpath.."/microexpansion_networks", "w")
-		f:write(minetest.serialize(data))
-		f:close()
-	end
+  if storage then
+    me.log("saving network data to mod storage","info")
+    storage:set_string("networks", minetest.serialize(data))
+  else
+    me.log("saving network data to file","info")
+    local f = io.open(me.worldpath.."/microexpansion_networks", "w")
+    f:write(minetest.serialize(data))
+    f:close()
+  end
 end
 
 function me.do_autosave()
-	me.last_autosave = -1
-	minetest.after(1, function()
-		--print("autosaving ME Networks")
-		me.save()
-		me.last_autosave = minetest.get_server_uptime()
-	end)
+  me.last_autosave = -1
+  minetest.after(1, function()
+    --print("autosaving ME Networks")
+    me.save()
+    me.last_autosave = minetest.get_server_uptime()
+  end)
 end
 
 function me.autosave()
-	--TODO: make max autosave interval settable
-	if not me.last_autosave then
-		me.do_autosave()
-	elseif me.last_autosave == -1 then
-		return
-	elseif minetest.get_server_uptime() - me.last_autosave >= 600 then
-		me.do_autosave()
-	end
+  --TODO: make max autosave interval settable
+  if not me.last_autosave then
+    me.do_autosave()
+  elseif me.last_autosave == -1 then
+    return
+  elseif minetest.get_server_uptime() - me.last_autosave >= 600 then
+    me.do_autosave()
+  end
 end
 
 -- save on server shutdown
