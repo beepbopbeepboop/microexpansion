@@ -530,8 +530,8 @@ me.register_node("cterminal", {
       -- local meta = minetest.get_meta(pos)
       -- meta:set_string("infotext", "allow moving: "..stack:get_name())
       -- TODO: Check capacity? Test.
-      me.insert_item(stack, net, inv, "main")
-      return count
+      local leftovers = me.insert_item(stack, net, inv, "main")
+      return count - leftovers:get_count()
     end
     return count
   end,
@@ -581,8 +581,8 @@ me.register_node("cterminal", {
       local net = me.get_connected_network(pos)
       local inv = net:get_inventory()
       local leftovers = me.insert_item(stack, net, inv, "main")
-      if leftovers:get_count() > 0 then
-	fixme()
+      if not leftovers:is_empty() then
+        me.leftovers(net.controller_pos, leftovers)
       end
       net:set_storage_space(true)
     end
@@ -635,9 +635,8 @@ me.register_node("cterminal", {
 	  or craft.decremented_input.items[i]:get_name() ~= linv:get_stack("recipe", i):get_name())
 	  and not craft.decremented_input.items[i]:is_empty() then
 	  local leftovers = me.insert_item(craft.decremented_input.items[i], net, inv, "main")
-	  if leftovers:get_count() > 0 then
-	    -- Ick, no room, just drop on the floor. Maybe player inventory?
-	    minetest.add_item(pos, leftovers)
+	  if not leftovers:is_empty() then
+	    me.leftovers(pos, leftovers)
 	  end
 	end
 	if replace then

@@ -253,7 +253,10 @@ local function add_all(pos,net)
     end
   end
   for _,ostack in pairs(items) do
-    me.insert_item(ostack, net, ctrl_inv, "main")
+    local leftovers = me.insert_item(ostack, net, ctrl_inv, "main")
+    if not leftovers:is_empty() then
+      me.leftovers(leftovers)
+    end
   end
 
   net:update()
@@ -426,7 +429,10 @@ microexpansion.register_node("drive", {
     -- network:set_storage_space(#items)
     for _,stack in pairs(items) do
       network:set_storage_space(true)
-      me.insert_item(stack, network, ctrl_inv, "main")
+      local leftovers = me.insert_item(stack, network, ctrl_inv, "main")
+      if not leftovers:is_empty() then
+	me.leftovers(pos, leftovers)
+      end
     end
     network:set_storage_space(true)
     me.send_event(pos, "items", {net=network})

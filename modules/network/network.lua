@@ -350,6 +350,12 @@ function network:find_loan(inv, stack)
   return nil
 end
 
+function me.leftovers(pos, leftovers)
+  -- Ick, no room, just drop on the floor.
+  -- todo: play sound
+  minetest.add_item({x=pos.x, y=pos.y-2, z=pos.z}, leftovers)
+end
+
 function network:get_inventory_space(inv, list)
   local inv = inv or self:get_inventory()
   local listname = list or "main"
@@ -408,7 +414,10 @@ local function create_inventory(net)
     end,
     on_put = function(inv, listname, _, stack)
       inv:remove_item(listname, stack)
-      me.insert_item(stack, net, inv, listname)
+      local leftovers = me.insert_item(stack, net, inv, listname)
+      if not leftovers:is_empty() then
+        me.leftovers(net.controller_pos, leftovers)
+      end
       net:set_storage_space(true)
     end,
     allow_take = function(inv, listname, slot, stack, player)
@@ -832,7 +841,10 @@ function network:update_loan(inv, loan_slot)
       mstack:set_count(mstack:get_count()+excess)
     else
       me.log("INV: went missing, readding", "error")
-      me.insert_item(extra, self, inv, "main")
+      local leftovers = me.insert_item(extra, self, inv, "main")
+      if not leftovers:is_empty() then
+	me.leftovers(net.controller_pos, leftovers)
+      end
     end
     inv:set_stack("main", ref.main_slot, mstack)
     me.add_capacity(ref.ipos, excess)
@@ -957,7 +969,10 @@ function network:create_loan(stack, ref, inv, int_meta, bias)
   int_meta:set_int("capacity", prev + count)
   -- me.log("total loaned items: "..tostring(prev + count))
   self:set_storage_space(true)
-  local _, main_slot = me.insert_item(mstack, self, inv, "main", bias)
+  local leftovers, main_slot = me.insert_item(mstack, self, inv, "main", bias)
+  if not leftovers:is_empty() then
+    me.leftovers(self.controller_pos, leftovers)
+  end
   local now_on_loan = self.counts[stack:get_name()] or 0
   local items_taken = now_on_loan - on_loan
   if items_taken > 0 then

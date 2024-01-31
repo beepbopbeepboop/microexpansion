@@ -183,7 +183,10 @@ me.register_node("term", {
   on_metadata_inventory_put = function(pos, listname, _, stack)
     local net = me.get_connected_network(pos)
     local inv = net:get_inventory()
-    me.insert_item(stack, net, inv, "main")
+    local leftovers = me.insert_item(stack, net, inv, "main")
+    if not leftovers:is_empty() then
+      me.leftovers(leftovers)
+    end
     net:set_storage_space(true)
   end,
   allow_metadata_inventory_take = function(pos,_,_,stack, player)

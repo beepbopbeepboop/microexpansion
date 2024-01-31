@@ -375,9 +375,8 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
 	if stack:get_count() ~= 0 then
 	  me.log("AC: putting "..stack:get_count().." "..stack:get_name().." back into main inventory", "error")
 	  local leftovers = me.insert_item(stack, net, inv, "main")
-	  if leftovers:get_count() > 0 then
-	    -- drop on floor, todo: play sound
-            minetest.add_item(cpos, leftovers)
+	  if not leftovers:is_empty() then
+	    me.leftovers(cpos, leftovers)
 	  end
 	end
       end
@@ -601,9 +600,8 @@ function me.autocraft(autocrafterCache, cpos, net, linv, inv, count)
       end
     end
     local leftovers = me.insert_item(stack, net, inv, "main")
-    if leftovers:get_count() > 0 then
-      -- Ick, no room, just drop on the floor. Maybe player inventory?
-      minetest.add_item(cpos, leftovers)
+    if not leftovers:is_empty() then
+      me.leftovers(cpos, leftovers)
     end
     net:set_storage_space(true)
     -- deal with replacements
@@ -615,9 +613,8 @@ function me.autocraft(autocrafterCache, cpos, net, linv, inv, count)
 	and not craft.decremented_input.items[i]:is_empty() then
 	local leftovers = me.insert_item(craft.decremented_input.items[i], net, inv, "main")
 	net:set_storage_space(true)
-	if leftovers:get_count() > 0 then
-	  -- Ick, no room, just drop on the floor. Maybe player inventory?
-	  minetest.add_item(cpos, leftovers)
+	if not leftovers:is_empty() then
+	  me.leftovers(cpos, leftovers)
 	end
       end
       if replace then

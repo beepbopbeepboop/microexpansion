@@ -152,8 +152,8 @@ me.register_node("cmonitor", {
       local inv = net:get_inventory()
       local stack = linv:get_stack(from_list, from_index)
       stack:set_count(count)
-      me.insert_item(stack, net, inv, "ac")
-      return count
+      local leftovers = me.insert_item(stack, net, inv, "ac")
+      return count - leftovers:get_count()
     end
     return count
   end,
