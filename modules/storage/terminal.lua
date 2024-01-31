@@ -1,3 +1,4 @@
+-- terminal
 -- microexpansion/machines.lua
 
 local me = microexpansion
@@ -21,24 +22,32 @@ local function chest_formspec(pos, start_id, listname, page_max, q)
       else
         list = "list[context;" .. listname .. ";0,0.3;8,4;" .. (start_id - 1) .. "]"
       end
+      if minetest.get_modpath("i3") then
+	list = list .. [[
+	  list[current_player;main;0,5.5;9,4;]
+	]]
+      else
+	list = list .. [[
+	  list[current_player;main;0,5.5;8,1;]
+	  list[current_player;main;0,6.73;8,3;8]
+	]]
+      end
       list = list .. [[
-        list[current_player;main;0,5.5;8,1;]
-        list[current_player;main;0,6.73;8,3;8]
-        listring[detached:]]..ctrlinvname..[[;main]
-        listring[current_player;main]
+	listring[detached:]]..ctrlinvname..[[;main]
+	listring[current_player;main]
       ]]
       buttons = [[
-        button[3.56,4.35;1.8,0.9;tochest;To Drive]
-        tooltip[tochest;Move everything from your inventory to the ME network.]
-        button[5.4,4.35;0.8,0.9;prev;<]
-        button[7.25,4.35;0.8,0.9;next;>]
-        tooltip[prev;Previous]
-        tooltip[next;Next]
-        field[0.29,4.6;2.2,1;filter;;]]..query..[[]
-        button[2.1,4.5;0.8,0.5;search;?]
-        button[2.75,4.5;0.8,0.5;clear;X]
-        tooltip[search;Search]
-        tooltip[clear;Reset]
+	button[3.56,4.35;1.8,0.9;tochest;To Drive]
+	tooltip[tochest;Move everything from your inventory to the ME network.]
+	button[5.4,4.35;0.8,0.9;prev;<]
+	button[7.25,4.35;0.8,0.9;next;>]
+	tooltip[prev;Previous]
+	tooltip[next;Next]
+	field[0.29,4.6;2.2,1;filter;;]]..query..[[]
+	button[2.1,4.5;0.8,0.5;search;?]
+	button[2.75,4.5;0.8,0.5;clear;X]
+	tooltip[search;Search]
+	tooltip[clear;Reset]
       ]]
     else
       list = "label[3,2;" .. minetest.colorize("red", "No connected drives!") .. "]"
@@ -49,6 +58,12 @@ local function chest_formspec(pos, start_id, listname, page_max, q)
   if page_max then
     page_number = "label[6.15,4.5;" .. math.floor((start_id / 32)) + 1 ..
       "/" .. page_max .."]"
+  end
+
+  if net and not net:powered() then
+    list = "label[3,2;" .. minetest.colorize("red", "No power!") .. "]"
+    buttons = ""
+    page_number = ""
   end
 
   return [[
@@ -86,9 +101,9 @@ local term_recipe = nil
 if minetest.get_modpath("mcl_core") then
 term_recipe = {
     { 1, {
-        {"mcl_core:iron_ingot", "mcl_chests:chest", "mcl_core:iron_ingot"},
-        {"mcl_core:iron_ingot", "microexpansion:machine_casing", "mcl_core:iron_ingot"},
-        {"mcl_core:iron_ingot", "microexpansion:cable", "mcl_core:iron_ingot"},
+	{"mcl_core:iron_ingot", "mcl_chests:chest", "mcl_core:iron_ingot"},
+	{"mcl_core:iron_ingot", "microexpansion:machine_casing", "mcl_core:iron_ingot"},
+	{"mcl_core:iron_ingot", "microexpansion:cable", "mcl_core:iron_ingot"},
       },
     }
 }
@@ -97,16 +112,16 @@ else
 
 term_recipe = {
     { 1, {
-        {"default:steel_ingot",   "default:chest",               "default:steel_ingot"},
-        {"default:steel_ingot", "microexpansion:machine_casing", "default:steel_ingot"},
-        {"default:steel_ingot", "microexpansion:cable",          "default:steel_ingot"},
+	{"default:steel_ingot",   "default:chest",               "default:steel_ingot"},
+	{"default:steel_ingot", "microexpansion:machine_casing", "default:steel_ingot"},
+	{"default:steel_ingot", "microexpansion:cable",          "default:steel_ingot"},
       },
     }
   }
 end
 
 -- [me chest] Register node
-microexpansion.register_node("term", {
+me.register_node("term", {
   description = "ME Terminal",
   usedfor = "Can interact with storage cells in ME networks",
   tiles = {
@@ -154,13 +169,13 @@ microexpansion.register_node("term", {
     return net:get_access_level(name) >= access_level.modify
   end,
   after_destruct = function(pos)
-   me.send_event(pos,"disconnect")
+    me.send_event(pos, "disconnect")
   end,
   allow_metadata_inventory_put = function(pos, _, _, stack, player)
     local network = me.get_connected_network(pos)
     if network then
       if network:get_access_level(player) < access_level.interact then
-        return 0
+	return 0
       end
     elseif minetest.is_protected(pos, player) then
       minetest.record_protection_violation(pos, player)
@@ -171,13 +186,17 @@ microexpansion.register_node("term", {
   on_metadata_inventory_put = function(pos, listname, _, stack)
     local net = me.get_connected_network(pos)
     local inv = net:get_inventory()
-    me.insert_item(stack, inv, "main")
+    local leftovers = me.insert_item(stack, net, inv, "main")
+    if not leftovers:is_empty() then
+      me.leftovers(leftovers)
+    end
+    net:set_storage_space(true)
   end,
   allow_metadata_inventory_take = function(pos,_,_,stack, player)
     local network = me.get_connected_network(pos)
     if network then
       if network:get_access_level(player) < access_level.interact then
-        return 0
+	return 0
       end
     elseif minetest.is_protected(pos, player) then
       minetest.record_protection_violation(pos, player)
@@ -188,13 +207,13 @@ microexpansion.register_node("term", {
   on_metadata_inventory_take = function(pos, listname, _, stack)
     local net = me.get_connected_network(pos)
     local inv = net:get_inventory()
-    inv:remove_item("main", stack)
+    me.remove_item(net, inv, "main", stack)
   end,
   tube = {
     can_insert = function(pos, _, stack) --pos, node, stack, direction
       local net = me.get_connected_network(pos)
       if not net then
-        return false
+	return false
       end
       local inv = net:get_inventory()
       local max_slots = inv:get_size("main")
@@ -203,13 +222,13 @@ microexpansion.register_node("term", {
       local slots, items = 0, 0
       -- Get amount of items in drive
       for i = 1, max_slots do
-        local dstack = inv:get_stack("main", i)
-        if dstack:get_name() ~= "" then
-          slots = slots + 1
-          local num = dstack:get_count()
-          if num == 0 then num = 1 end
-          items = items + num
-        end
+	local dstack = inv:get_stack("main", i)
+	if dstack:get_name() ~= "" then
+	  slots = slots + 1
+	  local num = dstack:get_count()
+	  if num == 0 then num = 1 end
+	  items = items + num
+	end
       end
       items = items + stack:get_count()
       return max_items > items
@@ -217,31 +236,30 @@ microexpansion.register_node("term", {
     insert_object = function(pos, _, stack)
       local net = me.get_connected_network(pos)
       if not net then
-        return stack
+	return stack
       end
       local inv = net:get_inventory()
-      me.insert_item(stack, inv, "main")
+      local leftovers = me.insert_item(stack, net, inv, "main")
       net:set_storage_space(true)
-      --TODO: leftover
-      return ItemStack()
+      return leftovers
     end,
     connect_sides = {left=1, right=1, front=1, back=1, top=1, bottom=1},
   },
   after_place_node = pipeworks_enabled and pipeworks.after_place,
   after_dig_node = pipeworks_enabled and pipeworks.after_dig,
-    on_receive_fields = function(pos, _, fields, sender)
-      local net,cp = me.get_connected_network(pos)
-      if net then
-        if cp then
-          microexpansion.log("network and ctrl_pos","info")
-        else
-       microexpansion.log("network but no ctrl_pos","warning")
+  on_receive_fields = function(pos, _, fields, sender)
+    local net,cp = me.get_connected_network(pos)
+    if net then
+      if cp then
+	me.log("network and ctrl_pos","info")
+      else
+	me.log("network but no ctrl_pos","warning")
       end
     else
       if cp then
-        microexpansion.log("no network but ctrl_pos","warning")
+	me.log("no network but ctrl_pos","warning")
       else
-        microexpansion.log("no network and no ctrl_pos","info")
+	me.log("no network and no ctrl_pos","info")
       end
     end
     local meta = minetest.get_meta(pos)
@@ -252,7 +270,7 @@ microexpansion.register_node("term", {
     if cp then
       ctrl_inv = net:get_inventory()
     else
-      microexpansion.log("no network connected","warning")
+      me.log("no network connected","warning")
       return
     end
     local inv
@@ -269,34 +287,34 @@ microexpansion.register_node("term", {
     end
     if fields.next then
       if page + 32 > inv:get_size(inv_name) then
-        return
+	return
       end
       meta:set_int("page", page + 32)
       meta:set_string("formspec", chest_formspec(pos, page + 32, inv_name, page_max))
     elseif fields.prev then
       if page - 32 < 1 then
-        return
+	return
       end
       meta:set_int("page", page - 32)
       meta:set_string("formspec", chest_formspec(pos, page - 32, inv_name, page_max))
     elseif fields.search or fields.key_enter_field == "filter" then
       own_inv:set_size("search", 0)
       if fields.filter == "" then
-        meta:set_int("page", 1)
-        meta:set_string("inv_name", "main")
-        meta:set_string("formspec", chest_formspec(pos, 1, "main", page_max))
+	meta:set_int("page", 1)
+	meta:set_string("inv_name", "main")
+	meta:set_string("formspec", chest_formspec(pos, 1, "main", page_max))
       else
-        local tab = {}
-        for i = 1, ctrl_inv:get_size("main") do
-          local match = ctrl_inv:get_stack("main", i):get_name():find(fields.filter)
-          if match then
-            tab[#tab + 1] = ctrl_inv:get_stack("main", i)
-          end
-        end
-        own_inv:set_list("search", tab)
-        meta:set_int("page", 1)
-        meta:set_string("inv_name", "search")
-        meta:set_string("formspec", chest_formspec(pos, 1, "search", page_max, fields.filter))
+	local tab = {}
+	for i = 1, ctrl_inv:get_size("main") do
+	  local match = ctrl_inv:get_stack("main", i):get_name():find(fields.filter)
+	  if match then
+	    tab[#tab + 1] = ctrl_inv:get_stack("main", i)
+	  end
+	end
+	own_inv:set_list("search", tab)
+	meta:set_int("page", 1)
+	meta:set_string("inv_name", "search")
+	meta:set_string("formspec", chest_formspec(pos, 1, "search", page_max, fields.filter))
       end
     elseif fields.clear then
       own_inv:set_size("search", 0)
@@ -305,18 +323,18 @@ microexpansion.register_node("term", {
       meta:set_string("formspec", chest_formspec(pos, 1, "main", page_max))
     elseif fields.tochest then
       if net:get_access_level(sender) < access_level.interact then
-        return
+	return
       end
       local pinv = minetest.get_inventory({type="player", name=sender:get_player_name()})
       net:set_storage_space(pinv:get_size("main"))
       local space = net:get_item_capacity()
       local contents = ctrl_inv:get_list("main") or {}
       for _,s in pairs(contents) do
-        if not s:is_empty() then
-          space = space - s:get_count()
-        end
+	if not s:is_empty() then
+	  space = space - s:get_count()
+	end
       end
-      microexpansion.move_inv({ inv=pinv, name="main" }, { inv=ctrl_inv, name="main",huge=true }, space)
+      me.move_inv(net, { inv=pinv, name="main" }, { inv=ctrl_inv, name="main", huge=true }, space)
       net:set_storage_space(true)
     end
   end,

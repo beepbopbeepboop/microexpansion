@@ -17,7 +17,7 @@ local access_level = microexpansion.constants.security.access_levels
 
 --- construct a new network
 -- @function [parent=#network] new
--- @param #table o the object to become a network or nil
+-- @param #table or the object to become a network or nil
 -- @return #table the new network object
 function network.new(o)
   return setmetatable(o or {}, {__index = network})
@@ -173,7 +173,7 @@ end
 function network:remove_power_capacity(power)
   self.power_storage = self.power_storage - power
   if self.power_storage < 0 then
-    microexpansion.log("power storage of network "..self.." dropped below zero","warning")
+    me.log("power storage of network "..self.." dropped below zero","warning")
   end
 end
 
@@ -212,12 +212,12 @@ function network:get_item_capacity()
   return cap
 end
 
-local function remove_slots(inv,ln,target,csize)
+function network:remove_slots(inv,ln,target,csize)
   for i = target, csize do
     local s = inv:get_stack(ln,i)
     if not s:is_empty() then
       inv:set_stack(ln, i, "")
-      me.insert_item(s, inv, ln)
+      me.insert_item(s, self, inv, ln)
     end
   end
   --perhaps allow list removal
@@ -257,7 +257,7 @@ function network:set_storage_space(count,listname)
     inv:set_size(ln, needed)
   elseif needed < 0 then
     needed = needed + csize
-    remove_slots(inv,ln,needed,csize)
+    self:remove_slots(inv,ln,needed,csize)
   end
   -- autosave network data
   me.autosave()
@@ -265,6 +265,7 @@ end
 
 function network:update()
   self:set_storage_space(true)
+  self:update_demand()
 end
 
 function network:get_inventory_name()
@@ -302,8 +303,10 @@ local function create_inventory(net)
       end
       local inside_stack = inv:get_stack(listname, index)
       local stack_name = stack:get_name()
-      if minetest.get_item_group(stack_name, "microexpansion_cell") > 0 then
-        return 0
+      if minetest.get_item_group(stack_name, "microexpansion_cell") > 0 and
+        stack:get_meta():get_string("items") ~= "" and
+        stack:get_meta():get_string("items") ~= "return {}" then
+	return 0
       end
       -- improve performance by skipping unnessecary calls
       if inside_stack:get_name() ~= stack_name or inside_stack:get_count() >= inside_stack:get_stack_max() then
@@ -329,7 +332,10 @@ local function create_inventory(net)
     end,
     on_put = function(inv, listname, _, stack)
       inv:remove_item(listname, stack)
-      me.insert_item(stack, inv, listname)
+      local leftovers = me.insert_item(stack, net, inv, listname)
+      if not leftovers:is_empty() then
+        me.leftovers(net.controller_pos, leftovers)
+      end
       net:set_storage_space(true)
     end,
     allow_take = function(_, _, _, stack, player)
@@ -382,6 +388,84 @@ function network:load()
   end
 end
 
+-- Helper to check to see if the controller is on and powered.
+function network:powered(name)
+  if not name and minetest.localplayer then
+    -- this works for the client side only
+    name = minetest.localplayer:get_name()
+    -- todo: on the server side, how do we get the player name?
+  end
+  local net = self
+  local meta = minetest.get_meta(net.controller_pos)
+  local run = meta:get_int("enabled") == 1
+  if not run then
+    if name then minetest.chat_send_player(name, "Please enable by turning controller switch.") end
+    return false
+  end
+  --me.log("NETWORK: powered power level input is "..meta:get_int("HV_EU_input").." and demand is "..meta:get_int("HV_EU_demand"), "error")
+  run = not technic or (meta:get_int("HV_EU_input") >= meta:get_int("HV_EU_demand") and meta:get_int("HV_EU_input") > 0)
+  if not run then
+    if name then minetest.chat_send_player(name, "Please provide HV power to ME controller.") end
+    return false
+  end
+  return true
+end
+
+function network:update_demand()
+  local pos = self.controller_pos
+  local meta = minetest.get_meta(pos)
+  local net = self
+  if meta:get_int("enabled") == 0 then
+    if meta:get_int("HV_EU_demand") ~= 0 then
+      meta:set_int("HV_EU_demand", 0)
+      meta:set_string("infotext", "Disabled")
+      me.send_event(pos, "power")
+    end
+    return
+  end
+  local demand = 120  -- controller is 120
+  for ipos in me.connected_nodes(pos) do
+    local name = me.get_node(ipos).name
+    if name == "microexpansion:cable" then
+      demand = demand + 1 -- cables are 1
+    elseif name == "microexpansion:interface" then
+      local meta = minetest.get_meta(ipos)
+      local inventories = minetest.deserialize(meta:get_string("connected"))
+      demand = demand + #inventories * 20 + 40 -- interfaces are 40 and 20 for each machine or inventory
+    else
+      demand = demand + 20 -- everything else is 20
+    end
+  end
+  if meta:get_int("HV_EU_demand") ~= demand then
+    local name = meta:get_string("owner")
+    meta:set_string("infotext", "Network Controller (owned by "..name..")")
+    me.log("NET: demand changed to "..demand, "error")
+    meta:set_int("HV_EU_demand", demand)
+    me.send_event(pos, "power")
+  end
+end
+
+-- We don't save this data, rather we rewalk upon first use. If 1% of
+-- the people play per reboot, then this saves 99% of the work.
+-- Also, we don't actually read or write any of this data normally,
+-- only for active users, using 1% of the memory.
+-- TODO: I think all the storage for me should be handled the same way.
+-- As it is, we needlessly read and write all the networks for all the users and
+-- writing isn't crash friendly, whereas rewalking is crash friendly.
+-- We don't reload the loans, that is saved and restored already.
+function network:reload_network()
+  self.autocrafters = {}
+  self.autocrafters_by_pos = {}
+  self.process = {}
+  for ipos in me.connected_nodes(self.controller_pos) do
+    local name = me.get_node(ipos).name
+    if name == "microexpansion:interface" then
+      me.reload_interface(self, ipos, nil)
+    end
+  end
+  self:update_demand()
+end
+
 function network:serialize()
   local sert = {}
   for i,v in pairs(self) do
@@ -402,4 +486,7 @@ function network:destruct()
   minetest.remove_detached_inventory(self:get_inventory_name())
   self.controller_pos = nil
   self.inv = nil
+end
+
+function network:update_counts()
 end

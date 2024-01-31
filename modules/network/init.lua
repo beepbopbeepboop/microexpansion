@@ -33,7 +33,7 @@ local function split_stack_values(stack)
 end
 --]]
 
-function me.insert_item(stack, inv, listname)
+function me.insert_item(stack, net, inv, listname)
   if me.settings.huge_stacks == false then
     return inv:add_item(listname, stack)
   end
@@ -60,9 +60,16 @@ function me.insert_item(stack, inv, listname)
   if not found then
     return inv:add_item(listname, stack)
   end
+  return ItemStack(), slot
 end
 
+function me.remove_item(net, inv, listname, stack)
+  return inv:remove_item(listname, stack)
+end
+
+dofile(path.."/loan.lua") -- Loan Management
 dofile(path.."/network.lua") -- Network Management
+dofile(path.."/autocraft.lua") -- Autocrafting
 
 -- generate iterator to find all connected nodes
 function me.connected_nodes(start_pos,include_ctrl)
