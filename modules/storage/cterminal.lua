@@ -252,7 +252,8 @@ end
 
 me.output_by_typename = {
   -- aka me.register_output_by_typename("cooking", "default:stone")
-  ["cooking"] = { "default:stone" }
+  -- shared by technic and techage
+  ["cooking"] = { "default:stone", "default:copper_ingot", "default:gold_ingot", "default:tin_ingot" }
 }
 
 -- Used to register what machine types (typename) produce which outputs.
@@ -266,6 +267,11 @@ function me.register_output_by_typename(typename, output)
   table.insert(me.output_by_typename[typename], output)
 end
 
+-- shared by technic and techage
+me.register_output_by_typename("cooking", "mesecons_materials:glue")
+me.register_output_by_typename("cooking", "mesecons_materials:fiber")
+me.register_output_by_typename("cooking", "basic_materials:plastic_sheet")
+me.register_output_by_typename("cooking", "basic_materials:paraffin")
 
 function me.register_output_to_inputs(output, inputs)
   --me.log("REG: output "..output.." from inputs "..dump(inputs))
@@ -309,6 +315,28 @@ me.block_to_typename_map = {
 -- default wiring
 me.register_typename("default:furnace", "cooking")
 
+-- default:furnace "cooking" only has 4 output slots
+me.register_max("default:copper_ingot", 99*4)
+me.register_max("default:gold_ingot", 99*4)
+me.register_max("default:steel_ingot", 99*4)
+me.register_max("default:tin_ingot", 99*4)
+me.register_max("default:stone", 99*4)
+me.register_max("mesecons_materials:glue", 99*4)
+me.register_max("mesecons_materials:fiber", 99*4)
+me.register_max("basic_materials:plastic_sheet", 99*4)
+me.register_max("basic_materials:paraffin", 99*4)
+
+if not technic then
+  -- default:furnace ("cooking")
+  me.register_output_to_inputs("default:copper_ingot",	{ ItemStack("default:copper_lump") })
+  me.register_output_to_inputs("default:gold_ingot",	{ ItemStack("default:gold_lump") })
+  me.register_output_to_inputs("default:tin_ingot",	{ ItemStack("default:tin_lump") })
+  me.register_output_to_inputs("mesecons_materials:glue", { ItemStack("default:aspen_sapling") })
+end
+me.register_output_to_inputs("mesecons_materials:fiber", { ItemStack("mesecons_materials:glue") })
+me.register_output_to_inputs("basic_materials:plastic_sheet", { ItemStack("basic_materials:paraffin") })
+me.register_output_to_inputs("basic_materials:paraffin", { ItemStack("basic_materials:oil_extract") })
+
 -- These must be called after the true name of the machine is defined.
 function me.register_machine_alias(alias, name)
   me.block_to_typename_map[alias] = me.block_to_typename_map[name]
@@ -316,7 +344,27 @@ function me.register_machine_alias(alias, name)
 end
 
 function me.get_recipe(typename, inputs)
-  return technic.get_recipe(typename, inputs)
+  if technic then
+    return technic.get_recipe(typename, inputs)
+  end
+  if typename == "cooking" then
+    local result, new_input = minetest.get_craft_result({
+      method = "cooking",
+      width = 1,
+      items = inputs})
+    if not result or result.time == 0 then
+      return nil
+    elseif not new_input.items[1]:is_empty() and new_input.items[1]:get_name() ~= items[1]:get_name() then
+      items[1]:take_item(1)
+      return {time = result.time,
+	new_input = {items[1]},
+		     output = {new_input.items[1], result.item}}
+    else
+      return {time = result.time,
+	      new_input = new_input.items,
+	      output = result.item}
+    end
+  end
 end
 
 -- TODO: Removing an output when the recipe is empty that is in
@@ -338,8 +386,6 @@ local function on_output_change(pos, linv, stack)
 	has_enough = false
       elseif prev and prev:get_name() ~= "" and me.insert_item(prev, net, inv, "main"):get_count() > 0 then
 	net:set_storage_space(true)
-	-- full, no room to remove
-	-- push into player inventory?
 	-- Don't have to worry about this happening until minetest is fully multithreaded
 	has_enough = false
       else
@@ -412,8 +458,6 @@ local function on_output_change(pos, linv, stack)
       end
     elseif prev and prev:get_name() ~= "" and me.insert_item(prev, net, inv, "main"):get_count() > 0 then
       net:set_storage_space(true)
-      -- full, no room to remove
-      -- push into player inventory?
       -- Don't have to worry about this happening until minetest is fully multithreaded
       has_enough = false
       if width_idx <= width then

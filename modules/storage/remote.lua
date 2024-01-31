@@ -107,7 +107,7 @@ minetest.register_tool("microexpansion:remote", {
   description = S("Microexpansion Remote"),
   inventory_image = "technic_prospector.png",
   wear_represents = "technic_RE_charge",
-  on_refill = technic.refill_RE_charge,
+  on_refill = technic and technic.refill_RE_charge,
   on_use = function(toolstack, user, pointed_thing)
     if not user or not user:is_player() or user.is_fake_player then return end
     local toolmeta = get_metadata(toolstack)

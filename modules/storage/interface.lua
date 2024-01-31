@@ -163,8 +163,8 @@ me.register_node("interface", {
   description = "ME Interface",
   usedfor = "Interface for ME system",
   tiles = {
-    "chest_top",
-    "chest_top",
+    "interface",
+    "interface",
     "chest_side",
     "chest_side",
     "chest_side",
