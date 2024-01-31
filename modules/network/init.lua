@@ -534,6 +534,6 @@ end
 minetest.register_on_shutdown(me.save)
 
 if false then
-  -- This only works if one enables unsafe mods. The debugger uses the unsage api.
+  -- This only works if one enables unsafe mods. The debugger uses the unsafe api.
   dofile(path.."/debugger.lua") -- Debugger a la python pdb, see https://github.com/slembcke/debugger.lua
 end
