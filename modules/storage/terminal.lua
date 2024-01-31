@@ -3,6 +3,7 @@
 
 local me = microexpansion
 local pipeworks_enabled = minetest.get_modpath("pipeworks") and true or false
+local access_level = microexpansion.constants.security.access_levels
 
 -- [me chest] Get formspec
 local function chest_formspec(pos, start_id, listname, page_max, q)
@@ -17,9 +18,9 @@ local function chest_formspec(pos, start_id, listname, page_max, q)
       local ctrlinvname = net:get_inventory_name()
       if listname == "main" then
 	list = "list[detached:"..ctrlinvname..";"
-	  .. listname .. ";0,0.3;8,4;" .. (start_id - 1) .. "]"
+		  .. listname .. ";0,0.3;8,4;" .. (start_id - 1) .. "]"
       else
-	list = "list[context;" .. listname .. ";0,0.3;8,4;" .. (start_id - 1) .. "]"
+        list = "list[context;" .. listname .. ";0,0.3;8,4;" .. (start_id - 1) .. "]"
       end
       if minetest.get_modpath("i3") then
 	list = list .. [[
@@ -81,7 +82,7 @@ end
 
 local function update_chest(pos,_,ev)
   --for now all events matter
-
+  
   local network = me.get_connected_network(pos)
   local meta = minetest.get_meta(pos)
   if network == nil then
@@ -96,6 +97,29 @@ local function update_chest(pos,_,ev)
   meta:set_string("formspec", chest_formspec(pos, 1, "main", page_max))
 end
 
+local term_recipe = nil
+if minetest.get_modpath("mcl_core") then
+term_recipe = {
+    { 1, {
+        {"mcl_core:iron_ingot", "mcl_chests:chest", "mcl_core:iron_ingot"},
+        {"mcl_core:iron_ingot", "microexpansion:machine_casing", "mcl_core:iron_ingot"},
+        {"mcl_core:iron_ingot", "microexpansion:cable", "mcl_core:iron_ingot"},
+      },
+    }
+}
+
+else
+
+term_recipe = {
+    { 1, {
+	{"default:steel_ingot",   "default:chest",               "default:steel_ingot"},
+	{"default:steel_ingot", "microexpansion:machine_casing", "default:steel_ingot"},
+	{"default:steel_ingot", "microexpansion:cable",          "default:steel_ingot"},
+      },
+    }
+  }
+end
+
 -- [me chest] Register node
 me.register_node("term", {
   description = "ME Terminal",
@@ -108,14 +132,7 @@ me.register_node("term", {
     "chest_side",
     "chest_front",
   },
-  recipe = {
-    { 1, {
-	{"default:steel_ingot",   "default:chest",               "default:steel_ingot"},
-	{"default:steel_ingot", "microexpansion:machine_casing", "default:steel_ingot"},
-	{"default:steel_ingot", "microexpansion:cable",          "default:steel_ingot"},
-      },
-    }
-  },
+  recipe = term_recipe,
   is_ground_content = false,
   groups = { cracky = 1, me_connect = 1, tubedevice = 1, tubedevice_receiver = 1 },
   paramtype = "light",
@@ -133,11 +150,34 @@ me.register_node("term", {
     me.send_event(pos, "connect", {net=net})
     update_chest(pos)
   end,
+  can_dig = function(pos, player)
+    if not player then
+      return false
+    end
+    local name = player:get_player_name()
+    if minetest.is_protected(pos, name) then
+      minetest.record_protection_violation(pos, name)
+      return false
+    end
+    local net,cp = me.get_connected_network(pos)
+    if not net then
+      return true
+    end
+    return net:get_access_level(name) >= access_level.modify
+  end,
   after_destruct = function(pos)
     me.send_event(pos, "disconnect")
   end,
-  allow_metadata_inventory_put = function(pos, listname, index, stack, player)
-    -- TODO: Check capacity, only allow if room
+  allow_metadata_inventory_put = function(pos, _, _, stack, player)
+    local network = me.get_connected_network(pos)
+    if network then
+      if network:get_access_level(player) < access_level.interact then
+        return 0
+      end
+    elseif minetest.is_protected(pos, player) then
+      minetest.record_protection_violation(pos, player)
+      return 0
+    end
     return stack:get_count()
   end,
   on_metadata_inventory_put = function(pos, listname, _, stack)
@@ -145,6 +185,18 @@ me.register_node("term", {
     local inv = net:get_inventory()
     me.insert_item(stack, net, inv, "main")
     net:set_storage_space(true)
+  end,
+  allow_metadata_inventory_take = function(pos,_,_,stack, player)
+    local network = me.get_connected_network(pos)
+    if network then
+      if network:get_access_level(player) < access_level.interact then
+        return 0
+      end
+    elseif minetest.is_protected(pos, player) then
+      minetest.record_protection_violation(pos, player)
+      return 0
+    end
+    return math.min(stack:get_count(),stack:get_stack_max())
   end,
   on_metadata_inventory_take = function(pos, listname, _, stack)
     local net = me.get_connected_network(pos)
@@ -154,6 +206,9 @@ me.register_node("term", {
   tube = {
     can_insert = function(pos, _, stack) --pos, node, stack, direction
       local net = me.get_connected_network(pos)
+      if not net then
+        return false
+      end
       local inv = net:get_inventory()
       local max_slots = inv:get_size("main")
       local max_items = net.capacity_cache
@@ -174,6 +229,9 @@ me.register_node("term", {
     end,
     insert_object = function(pos, _, stack)
       local net = me.get_connected_network(pos)
+      if not net then
+        return stack
+      end
       local inv = net:get_inventory()
       local leftovers = me.insert_item(stack, net, inv, "main")
       net:set_storage_space(true)
@@ -258,6 +316,9 @@ me.register_node("term", {
       meta:set_string("inv_name", "main")
       meta:set_string("formspec", chest_formspec(pos, 1, "main", page_max))
     elseif fields.tochest then
+      if net:get_access_level(sender) < access_level.interact then
+	return
+      end
       local pinv = minetest.get_inventory({type="player", name=sender:get_player_name()})
       -- TODO: test and fix, net:set_storage_space(pinv:get_size("main"))
       local space = net:get_item_capacity()
@@ -272,3 +333,7 @@ me.register_node("term", {
     end
   end,
 })
+
+if me.uinv_category_enabled then
+  unified_inventory.add_category_item("storage", "microexpansion:term")
+end

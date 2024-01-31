@@ -1,2 +1,5 @@
 #Stack items in networks higher than their max size.
 microexpansion_huge_stacks (huge stacks) bool true
+
+#Enable the "simple" craft recipes that do not require basic_materials even if basic_materials is present.
+microexpansion_simple_craft (simple craft recipes) bool false

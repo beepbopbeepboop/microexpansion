@@ -1,6 +1,7 @@
 -- microexpansion/machines.lua
 
 local me = microexpansion
+local access_level = microexpansion.constants.security.access_levels
 
 local netdrives
 
@@ -84,7 +85,7 @@ local function write_to_cell(cell, items, item_count)
   local percent = math.floor(item_count / size * 100)
   -- Update description
   item_meta:set_string("description", base_desc.."\n"..
-  minetest.colorize("grey", tostring(item_count).."/"..tostring(size).." Items ("..tostring(percent).."%)"))
+    minetest.colorize("grey", tostring(item_count).."/"..tostring(size).." Items ("..tostring(percent).."%)"))
   return cell
 end
 
@@ -312,6 +313,26 @@ local function update_drive(pos,_,ev)
   end
 end
 
+if minetest.get_modpath("mcl_core") then
+  drive_recipe = {
+    { 1, {
+    {"mcl_core:iron_ingot", "mcl_chests:chest", "mcl_core:iron_ingot"},
+    {"mcl_core:iron_ingot", "microexpansion:machine_casing", "mcl_core:iron_ingot"},
+    {"mcl_core:iron_ingot", "mcl_chests:chest", "mcl_core:iron_ingot"},
+},
+}}
+
+else
+  drive_recipe = {
+    { 1, {
+	{"default:steel_ingot", "default:chest",                 "default:steel_ingot" },
+	{"default:steel_ingot", "microexpansion:machine_casing", "default:steel_ingot" },
+	{"default:steel_ingot", "default:chest",                 "default:steel_ingot" },
+      },
+    }
+  }
+end
+
 -- [me chest] Register node
 microexpansion.register_node("drive", {
   description = "ME Drive",
@@ -324,14 +345,7 @@ microexpansion.register_node("drive", {
     "chest_side",
     "drive_full",
   },
-  recipe = {
-    { 1, {
-	{"default:steel_ingot", "default:chest",                 "default:steel_ingot" },
-	{"default:steel_ingot", "microexpansion:machine_casing", "default:steel_ingot" },
-	{"default:steel_ingot", "default:chest",                 "default:steel_ingot" },
-      },
-    }
-  },
+  recipe = drive_recipe,
   is_ground_content = false,
   groups = { cracky = 1, me_connect = 1 },
   paramtype = "light",
@@ -357,7 +371,19 @@ microexpansion.register_node("drive", {
     me.send_event(pos, "connect")
   end,
   can_dig = function(pos, player)
-    if minetest.is_protected(pos, player) then
+    if not player then
+      return false
+    end
+    local name = player:get_player_name()
+    if minetest.is_protected(pos, name) then
+      minetest.record_protection_violation(pos, name)
+      return false
+    end
+    local net,cp = me.get_connected_network(pos)
+    if not net then
+      return true
+    end
+    if net:get_access_level(name) < access_level.modify then
       return false
     end
     local meta = minetest.get_meta(pos)
@@ -368,11 +394,21 @@ microexpansion.register_node("drive", {
    me.send_event(pos, "disconnect")
   end,
   allow_metadata_inventory_put = function(pos, _, _, stack, player)
-    if minetest.is_protected(pos, player)
-       or minetest.get_item_group(stack:get_name(), "microexpansion_cell") == 0 then
+    local name = player:get_player_name()
+    local network = me.get_connected_network(pos)
+    if network then
+      if network:get_access_level(player) < access_level.interact then
+        return 0
+      end
+    elseif minetest.is_protected(pos, name) then
+      minetest.record_protection_violation(pos, name)
       return 0
     end
-    return 1
+    if minetest.get_item_group(stack:get_name(), "microexpansion_cell") == 0 then
+      return 0
+    else
+      return 1
+    end
   end,
   on_metadata_inventory_put = function(pos, _, _, stack)
     me.send_event(pos, "item_cap")
@@ -396,11 +432,17 @@ microexpansion.register_node("drive", {
     me.send_event(pos, "items", {net=network})
   end,
   allow_metadata_inventory_take = function(pos,_,_,stack, player) --args: pos, listname, index, stack, player
-    if minetest.is_protected(pos, player) then
+    local name = player:get_player_name()
+    local network = me.get_connected_network(pos)
+    if network then
+      write_drive_cells(pos,network)
+      if network:get_access_level(player) < access_level.interact then
+        return 0
+      end
+    elseif minetest.is_protected(pos, name) then
+      minetest.record_protection_violation(pos, name)
       return 0
     end
-    local network = me.get_connected_network(pos)
-    write_drive_cells(pos,network)
     return stack:get_count()
   end,
   on_metadata_inventory_take = function(pos, _, _, stack)
@@ -430,3 +472,7 @@ microexpansion.register_node("drive", {
     me.send_event(pos, "items", {net=network})
   end,
 })
+
+if me.uinv_category_enabled then
+  unified_inventory.add_category_item("storage", "microexpansion:drive")
+end

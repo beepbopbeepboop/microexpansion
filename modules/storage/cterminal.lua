@@ -480,9 +480,24 @@ me.register_node("cterminal", {
     me.send_event(pos, "disconnect")
   end,
   can_dig = function(pos, player)
+    if not player then
+      return false
+    end
+    local name = player:get_player_name()
+    if minetest.is_protected(pos, name) then
+      minetest.record_protection_violation(pos, name)
+      return false
+    end
     local meta = minetest.get_meta(pos)
     local inv = meta:get_inventory()
-    return inv:is_empty("recipe")
+    if not inv:is_empty("recipe") then
+      return false
+    end
+    local net,cp = me.get_connected_network(pos)
+    if not net then
+      return true
+    end
+    return net:get_access_level(name) >= access_level.modify
   end,
   allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
     me.log("Allow a move from "..from_list.." to "..to_list, "error")
