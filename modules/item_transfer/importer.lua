@@ -22,7 +22,9 @@ function importer_timer(pos, elapsed)
     end
     local import_filter = function(stack)
       local stack_name = stack:get_name()
-      if minetest.get_item_group(stack_name, "microexpansion_cell") > 0 then
+      if minetest.get_item_group(stack_name, "microexpansion_cell") > 0 and
+        stack:get_meta():get_string("items") ~= "" and
+        stack:get_meta():get_string("items") ~= "return {}" then
         return true
       end
       if upgrades.filter then
