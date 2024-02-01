@@ -124,7 +124,7 @@ function microexpansion.register_node(itemstring, def)
   end
 end
 
--- get a node, if nessecary load it
+-- get a node, if necessary load it
 function microexpansion.get_node(pos)
   local node = minetest.get_node_or_nil(pos)
   if node then return node end
@@ -143,7 +143,7 @@ function microexpansion.update_node(pos,event)
 end
 
 -- [function] Move items from inv to inv
-function microexpansion.move_inv(inv1, inv2, max, filter)
+function microexpansion.move_inv(net, inv1, inv2, max, filter)
   if max <= 0 then return end
   local finv, tinv   = inv1.inv, inv2.inv
   local fname, tname = inv1.name, inv2.name
@@ -161,18 +161,18 @@ function microexpansion.move_inv(inv1, inv2, max, filter)
       end
       if tinv and tinv:room_for_item(tname, v) and (not filter or not filter(v)) then
 	if huge then
-	  microexpansion.insert_item(v, tinv, tname)
+	  microexpansion.insert_item(v, net, tinv, tname)
 	  finv:remove_item(fname, v)
         else
 	  --TODO: continue inserting from the same stack if it is bigger than max
 	  if v:get_count() > v:get_stack_max() then
 	    v = v:peek_item(v:get_stack_max())
 	  end
-	  local leftover = tinv:add_item(tname, v)
+	  local leftovers = tinv:add_item(tname, v)
 	  finv:remove_item(fname, v)
-	  if leftover and not(leftover:is_empty()) then
-	    microexpansion.log("leftover items when transferring inventory","warning")
-	    finv:add_item(fname, leftover)
+	  if leftovers and not leftovers:is_empty() then
+	    microexpansion.log("leftover items when transferring inventory", "warning")
+	    finv:add_item(fname, leftovers)
 	  end
 	end
 	inserted = inserted + v:get_count()

@@ -2,7 +2,8 @@
 
 local me = microexpansion
 
--- TODO: regulation upgrade (1: disable in formspec, mesecon control; 2: requests from the me network and perhaps digiline)
+-- TODO: regulation upgrade (1: disable in formspec, mesecon control; 2: requests
+-- from the me network and perhaps digiline)
 
 -- [register item] Upgrade Base
 me.register_item("upgrade_base", {

@@ -22,7 +22,7 @@ local function exporter_timer(pos, elapsed)
       return not own_inv:contains_item("filter",stack:peek_item())
     end
     local max_count = math.pow(2, upgrades.bulk or 0)
-    microexpansion.move_inv({inv=net:get_inventory(),name="main",huge=true}, {inv=inv,name=list}, max_count, export_filter)
+    me.move_inv(net, {inv=net:get_inventory(), name="main", huge=true}, {inv=inv, name=list}, max_count, export_filter)
     --TODO: perhaps call allow_insert and on_insert callbacks
   end
   return true

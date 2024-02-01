@@ -30,7 +30,7 @@ function importer_timer(pos, elapsed)
       end
       return false
     end
-    microexpansion.move_inv({inv=inv,name=list}, {inv=net:get_inventory(),name="main",huge=true}, count, import_filter)
+    me.move_inv(net, {inv=inv, name=list}, {inv=net:get_inventory(), name="main", huge=true}, count, import_filter)
     net:set_storage_space(true)
   end
   return true
