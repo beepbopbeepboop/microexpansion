@@ -106,22 +106,29 @@ function item_transfer.setup_io_device(title, pos, metadata, inventory)
     formspec = formspec .. [[
       label[0.5,0.75;filter]
       list[context;filter;0.5,1;5,3]
+      listring[current_name;upgrades]
+      listring[current_player;main]
+      listring[current_name;filter]
+      listring[current_player;main]
     ]]
   else
     inv:set_size("filter",0)
   end
   --TODO: target inventory dropdown
   inv:set_size("upgrades", 4)
-  meta:set_string("formspec",
-    formspec ..
-    [[
-      label[8.5,2.5;upgrades]
-      list[context;upgrades;8,2.75;2,2]
-      list[current_player;main;0.5,5.5;8,1;]
-      list[current_player;main;0.5,7;8,3;8]
+  formspec = formspec .. [[
+    label[8.5,2.5;upgrades]
+    list[context;upgrades;8,2.75;2,2]
+    list[current_player;main;0.5,5.5;8,1;]
+    list[current_player;main;0.5,7;8,3;8]
+  ]]
+  if not upgrades.filter then
+    formspec = formspec .. [[
       listring[current_name;upgrades]
       listring[current_player;main]
-    ]])
+    ]]
+  end
+  meta:set_string("formspec", formspec)
 end
 
 local access_level = microexpansion.constants.security.access_levels
