@@ -332,6 +332,7 @@ me.register_node("interface", {
   tube = {
     can_insert = function(pos, _, stack) --pos, node, stack, direction
       local net = me.get_connected_network(pos)
+      if not net then return false end
       local inv = net:get_inventory()
 
       local max_slots = inv:get_size("main")
