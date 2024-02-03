@@ -73,6 +73,15 @@ function network.adjacent_connected_nodes(pos, include_ctrl)
       end
     end
   end
+  -- Additionally, linked quantum link nodes are adjacent.
+  if me.get_node(pos).name == "microexpansion:quantum_link" then
+    local source = minetest.get_meta(pos):get_string("source")
+    if source ~= "" then
+      local apos = vector.from_string(source)
+      local nn = me.get_node(apos).name
+      table.insert(nodes,{pos = apos, name = nn})
+    end
+  end
 
   return nodes
 end
@@ -274,6 +283,12 @@ function network:get_inventory_name()
   return "microexpansion_storage_"..cp.x.."_"..cp.y.."_"..cp.z
 end
 
+function me.leftovers(pos, leftovers)
+  -- Ick, no room, just drop on the floor.
+  -- todo: play sound
+  minetest.add_item({x=pos.x, y=pos.y-2, z=pos.z}, leftovers)
+end
+
 function network:get_inventory_space(inv, list)
   local inv = inv or self:get_inventory()
   local listname = list or "main"
@@ -432,6 +447,19 @@ function network:update_demand()
       local meta = minetest.get_meta(ipos)
       local inventories = minetest.deserialize(meta:get_string("connected"))
       demand = demand + #inventories * 20 + 40 -- interfaces are 40 and 20 for each machine or inventory
+    elseif name == "microexpansion:quantum_ring" then
+      demand = demand + 50 -- quantum requires a ton of power even in standby
+    elseif name == "microexpansion:quantum_link" then
+      demand = demand + 100 -- quantum requires a ton of power even in standby
+      local source = minetest.get_meta(pos):get_string("source")
+      if source ~= "" then
+	local apos = vector.from_string(source)
+	-- for a pair, 25 to 1062 eu, rich people pay for distance.
+	local distance = vector.distance(net.controller_pos, user:get_pos())
+	local charge_to_take = math.pow(math.log(distance),2) * 10
+	-- When running it take even more
+        demand = demand + 500 + charge_to_take/2
+      end
     else
       demand = demand + 20 -- everything else is 20
     end
@@ -479,7 +507,7 @@ function network:serialize()
       sert[i] = v
     end
   end
-  return sert
+    return sert
 end
 
 function network:destruct()

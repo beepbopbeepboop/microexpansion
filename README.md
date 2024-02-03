@@ -5,6 +5,10 @@ MicroExpansion - ME [microexpansion]
 
 * **Licence:** Code: MIT (see LICENSE), Media: CC-BY-SA 3.0
 
+Quantum Textures, from https://github.com/AppliedEnergistics/Applied-Energistics-2.git
+(c) 2020, [Ridanisaurus Rid](https://github.com/Ridanisaurus/), (c) 2013 - 2020 AlgorithmX2 et al
+CC-BY-NC-SA 3.0 (https://creativecommons.org/licenses/by-nc-sa/3.0/)
+
 When you really get into a survival world, you typically end up with a lot of items, like a ton of items.
 Sometimes literally.  
 But with that huge amount of resources, comes something annoying and typically unwanted: chests.  
