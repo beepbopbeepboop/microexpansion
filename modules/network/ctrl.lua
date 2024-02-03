@@ -112,7 +112,9 @@ me.register_node("ctrl", {
       -- turn ON without mesepower
       local meta = minetest.get_meta(pos)
       meta:set_int("enabled", 1)
-      net:update_demand()
+      if net then
+        net:update_demand()
+      end
     end
   }},
   on_construct = function(pos)

@@ -307,7 +307,7 @@ me.register_node("interface", {
   after_destruct = function(pos)
     me.send_event(pos, "disconnect")
   end,
-  allow_metadata_inventory_put = function(pos, listname, index, stack)
+  allow_metadata_inventory_put = function(pos, listname, index, stack, player)
     return stack:get_count()
   end,
   on_metadata_inventory_put = function(pos, _, _, stack)

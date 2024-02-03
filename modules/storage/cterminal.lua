@@ -14,6 +14,7 @@
 
 local me = microexpansion
 local pipeworks_enabled = minetest.get_modpath("pipeworks") and true or false
+local access_level = microexpansion.constants.security.access_levels
 
 -- caches some recipe data to avoid to call the slow function minetest.get_craft_result() every second
 me.autocrafterCache = {}
