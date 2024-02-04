@@ -157,7 +157,7 @@ me.register_node("quantum_link", {
       -- links are uniform bidirectional
       if rmeta then
         local nodes = me.network.adjacent_connected_nodes(pos)
-	local rpos = vector.zero()
+	local spos = vector.zero()
 	local count = 0
 	for x = pos.x-1, pos.x+1 do
 	  for y = pos.y-1, pos.y+1 do
@@ -165,15 +165,15 @@ me.register_node("quantum_link", {
 	      local npos = vector.new(x, y, z)
 	      local n = me.get_node(npos)
 	      if n.name == "microexpansion:quantum_ring" then
-	        rpos = vector.add(rpos, npos)
+	        spos = vector.add(spos, npos)
 	        count = count + 1
 	      end
 	    end
 	  end
 	end
-	local spos = vector.multiply(pos, count)
+	local mpos = vector.multiply(pos, count)
 	-- The structure must be balanced and we need at least 8 quantum rings
-	if vector.equals(spos, rpos) and count >= 8 then
+	if vector.equals(spos, mpos) and count >= 8 then
           meta:set_string("source", vector.to_string(rpos))
           rmeta:set_string("source", vector.to_string(pos))
 	end
