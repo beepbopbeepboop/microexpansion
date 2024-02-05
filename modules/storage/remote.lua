@@ -18,7 +18,6 @@ local function get_metadata(toolstack)
   if not m.crafts then m.crafts = "false" end
   if not m.desc then m.desc = "false" end
   if not m.inv_name then m.inv_name = "main" end
-  if not m.query then m.query = "" end
   return m
 end
 
@@ -260,6 +259,7 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
       toolmeta.page = page
       toolmeta.inv_name = "main"
       toolmeta.query = ""
+      toolmeta.filter = ""
       toolmeta.crafts = "false"
       toolmeta.page_max = math.floor(inv:get_size(inv_name) / 32) + 1
       update_search = true
