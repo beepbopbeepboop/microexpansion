@@ -16,6 +16,7 @@ local function get_metadata(toolstack)
   if not m.page then m.page = 1 end
   if not m.query then m.query = "" end
   if not m.crafts then m.crafts = "false" end
+  if not m.desc then m.desc = "false" end
   if not m.inv_name then m.inv_name = "main" end
   if not m.query then m.query = "" end
   return m
@@ -61,8 +62,10 @@ local function chest_formspec(s, pos, start_id, listname)
 	listring[current_player;main]
       ]]
       buttons = [[
-	button[3.56,4.35;1.8,0.9;tochest;To Drive]
+	button[3.56,4.35;0.9,0.9;tochest;To Drive]
 	tooltip[tochest;Move everything from your inventory to the ME network.]
+	checkbox[4.46,4.35;desc;desc;]]..s.desc..[[]
+	tooltip[desc;Search the descriptions]
 	button[5.4,4.35;0.8,0.9;prev;<]
 	button[7.25,4.35;0.8,0.9;next;>]
 	tooltip[prev;Previous]
@@ -262,6 +265,9 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
       update_search = true
       did_update = true
     elseif field == "tochest" then
+    elseif field == "desc" then
+      toolmeta.desc = value
+      update_search = true
     elseif field == "autocraft" then
       if tonumber(value) ~= nil then
         toolmeta.autocraft = value
@@ -319,6 +325,10 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
       local tab = {}
       for i = 1, inv:get_size(inv_name) do
 	local match = inv:get_stack(inv_name, i):get_name():find(toolmeta.query)
+	if toolmeta.desc == "true" then
+	  match = match or inv:get_stack(inv_name, i):get_description():find(toolmeta.query)
+	  match = match or inv:get_stack(inv_name, i):get_short_description():find(toolmeta.query)
+	end
 	if match then
 	  tab[#tab + 1] = inv:get_stack(inv_name, i)
 	end
