@@ -157,7 +157,7 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
     end
     dat[1].ostack = ItemStack(dat[1].recip.output)
     -- me.log("SEE: "..machine_name.." "..minetest.serialize(technic.recipes))
-    local speed = me.speed[machine_name]
+    local speed = me.speed[machine_name] or 1
     local craft_count = dat[1].ostack:get_count()
     local total = math.ceil(count/craft_count)
     -- Remove the extra machines.  In theory we could remove the busy machines.
@@ -496,7 +496,7 @@ function me.later(net, cpos, action, time)
     net.pending.index = 1
   end
   if i == 1 then
-    me.log("TIMER: starting timer to fire at "..time.." seconds", "error")
+    --me.log("TIMER: starting timer to fire at "..time.." seconds", "error")
     me.start_crafting(cpos, time+0.1)
   else
     -- me.log("TIMER: did not start timer for later, index "..i.." at time "..time, "error")
