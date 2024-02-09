@@ -9,6 +9,7 @@ local me = microexpansion
 
 -- The speeds of the various machines:
 me.set_speed("technic:electric_furnace", 2)
+me.set_speed("technic:lv_electric_furnace", 2)
 me.set_speed("technic:mv_electric_furnace", 4)
 me.set_speed("technic:hv_electric_furnace", 12)
 me.set_speed("technic:lv_alloy_furnace", 1)
@@ -91,6 +92,7 @@ me.register_max("default:ice", 99*4)
 -- The type of machines all the machines are: We have to list these
 -- before me.register_inventory.
 me.register_typename("technic:electric_furnace", "cooking")
+me.register_typename("technic:lv_electric_furnace", "cooking")
 me.register_typename("technic:mv_electric_furnace", "cooking")
 me.register_typename("technic:hv_electric_furnace", "cooking")
 me.register_typename("technic:lv_grinder", "grinding")
@@ -110,6 +112,7 @@ me.register_typename("technic:mv_freezer", "freezing")
 -- We need active nodes defined as well, as the recipe system doesn't otherwise have
 -- recipes for them.
 me.register_machine_alias("technic:electric_furnace_active", "technic:electric_furnace")
+me.register_machine_alias("technic:lv_electric_furnace_active", "technic:lv_electric_furnace")
 me.register_machine_alias("technic:mv_electric_furnace_active", "technic:mv_electric_furnace")
 me.register_machine_alias("technic:hv_electric_furnace_active", "technic:hv_electric_furnace")
 me.register_machine_alias("technic:lv_grinder_active", "technic:lv_grinder")
