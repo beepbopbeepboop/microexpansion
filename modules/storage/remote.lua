@@ -27,6 +27,8 @@ local function chest_formspec(s, pos, start_id, listname)
   local buttons = ""
   local net,cpos = me.get_connected_network(pos)
 
+  -- luajit seems to need this to ensure "clear" works, weird, why?
+  local dummy = s.query
   if net then
     local inv = net:get_inventory()
     if listname and (inv:get_size(listname) > 0 or net:get_item_capacity() > 0) then
@@ -259,9 +261,6 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
       toolmeta.page = page
       toolmeta.inv_name = "main"
       toolmeta.query = ""
-      toolmeta.filter = ""
-      toolstack:get_meta():set_string("query", "")
-      toolstack:get_meta():set_string("filter", "")
       toolmeta.crafts = "false"
       toolmeta.page_max = math.floor(inv:get_size(inv_name) / 32) + 1
       update_search = true
