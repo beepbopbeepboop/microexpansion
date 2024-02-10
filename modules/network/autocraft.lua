@@ -68,7 +68,8 @@ function me.reserve(net, pos, original_start, length)
   local free_time = net.pending.busy[pos] or 0
   local start = math.max(free_time, original_start)
   local ending = start + length
-  net.pending.busy[pos] = ending
+  -- inputs and outputs can collide if we run them too close
+  net.pending.busy[pos] = ending + 1
   return start
 end
 
