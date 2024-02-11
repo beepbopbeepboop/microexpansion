@@ -261,6 +261,7 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
       toolmeta.page = page
       toolmeta.inv_name = "main"
       toolmeta.query = ""
+      toolstack:get_meta():set_string("query", "")
       toolmeta.crafts = "false"
       toolmeta.page_max = math.floor(inv:get_size(inv_name) / 32) + 1
       update_search = true
