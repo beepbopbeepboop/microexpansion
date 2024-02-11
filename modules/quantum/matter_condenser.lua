@@ -8,7 +8,7 @@ local access_level = microexpansion.constants.security.access_levels
 me.register_item("singularity", {
   description = "Singularity",
   usedfor = "used to link quantum rings",
-  not_in_creative_inventory = 1,
+  groups = {not_in_creative_inventory = 1},
 })
 
 function me.create_singularity()
