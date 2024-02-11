@@ -268,6 +268,8 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
     elseif field == "tochest" then
     elseif field == "desc" then
       toolmeta.desc = value
+      page = 1
+      toolmeta.page = page
       update_search = true
     elseif field == "autocraft" then
       if tonumber(value) ~= nil then
@@ -287,7 +289,6 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
   end
 
   if update_search then
-    inv_name = "main"
     if toolmeta.crafts == "true" then
       inv_name = "me_crafts"
       local tab = {}
@@ -310,6 +311,7 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
       toolmeta.page_max = page_max
       did_update = true
     else
+      inv_name = "main"
       if toolmeta.query == "" then
 	own_inv:set_size("me_crafts", 0)
 	toolmeta.inv_name = inv_name

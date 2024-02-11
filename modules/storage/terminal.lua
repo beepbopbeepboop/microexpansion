@@ -1,5 +1,5 @@
 -- terminal
--- microexpansion/machines.lua
+-- microexpansion/modules/storage/terminal.lua
 
 local me = microexpansion
 local pipeworks_enabled = minetest.get_modpath("pipeworks") and true or false
@@ -11,16 +11,16 @@ local function chest_formspec(pos, start_id, listname, page_max, q)
   local page_number = ""
   local buttons = ""
   local query = q or ""
-  local net,cp = me.get_connected_network(pos)
+  local net,cpos = me.get_connected_network(pos)
 
-  if cp then
+  if cpos then
     if listname and net:get_item_capacity() > 0 then
       local ctrlinvname = net:get_inventory_name()
       if listname == "main" then
-        list = "list[detached:"..ctrlinvname..";"
-          .. listname .. ";0,0.3;8,4;" .. (start_id - 1) .. "]"
+	list = "list[detached:"..ctrlinvname..";"
+	  .. listname .. ";0,0.3;8,4;" .. (start_id - 1) .. "]"
       else
-        list = "list[context;" .. listname .. ";0,0.3;8,4;" .. (start_id - 1) .. "]"
+	list = "list[context;" .. listname .. ";0,0.3;8,4;" .. (start_id - 1) .. "]"
       end
       if minetest.get_modpath("i3") then
 	list = list .. [[
@@ -82,15 +82,15 @@ end
 
 local function update_chest(pos,_,ev)
   --for now all events matter
-  
-  local network = me.get_connected_network(pos)
+
+  local net = me.get_connected_network(pos)
   local meta = minetest.get_meta(pos)
-  if network == nil then
+  if net == nil then
     meta:set_int("page", 1)
     meta:set_string("formspec", chest_formspec(pos, 1))
     return
   end
-  local size = network:get_item_capacity()
+  local size = net:get_item_capacity()
   local page_max = me.int_to_pagenum(size) + 1
 
   meta:set_string("inv_name", "main")
@@ -120,7 +120,7 @@ term_recipe = {
   }
 end
 
--- [me chest] Register node
+-- [me terminal] Register node
 me.register_node("term", {
   description = "ME Terminal",
   usedfor = "Can interact with storage cells in ME networks",
@@ -148,7 +148,7 @@ me.register_node("term", {
     own_inv:set_size("src", 1)
 
     local net = me.get_connected_network(pos)
-    me.send_event(pos,"connect",{net=net})
+    me.send_event(pos, "connect", {net=net})
     if net then
       update_chest(pos)
     end
@@ -162,7 +162,7 @@ me.register_node("term", {
       minetest.record_protection_violation(pos, name)
       return false
     end
-    local net,cp = me.get_connected_network(pos)
+    local net,cpos = me.get_connected_network(pos)
     if not net then
       return true
     end
@@ -172,9 +172,9 @@ me.register_node("term", {
     me.send_event(pos, "disconnect")
   end,
   allow_metadata_inventory_put = function(pos, _, _, stack, player)
-    local network = me.get_connected_network(pos)
-    if network then
-      if network:get_access_level(player) < access_level.interact then
+    local net = me.get_connected_network(pos)
+    if net then
+      if net:get_access_level(player) < access_level.interact then
 	return 0
       end
     elseif minetest.is_protected(pos, player) then
@@ -193,9 +193,9 @@ me.register_node("term", {
     net:set_storage_space(true)
   end,
   allow_metadata_inventory_take = function(pos,_,_,stack, player)
-    local network = me.get_connected_network(pos)
-    if network then
-      if network:get_access_level(player) < access_level.interact then
+    local net = me.get_connected_network(pos)
+    if net then
+      if net:get_access_level(player) < access_level.interact then
 	return 0
       end
     elseif minetest.is_protected(pos, player) then
@@ -248,15 +248,15 @@ me.register_node("term", {
   after_place_node = pipeworks_enabled and pipeworks.after_place,
   after_dig_node = pipeworks_enabled and pipeworks.after_dig,
   on_receive_fields = function(pos, _, fields, sender)
-    local net,cp = me.get_connected_network(pos)
+    local net,cpos = me.get_connected_network(pos)
     if net then
-      if cp then
+      if cpos then
 	me.log("network and ctrl_pos","info")
       else
 	me.log("network but no ctrl_pos","warning")
       end
     else
-      if cp then
+      if cpos then
 	me.log("no network but ctrl_pos","warning")
       else
 	me.log("no network and no ctrl_pos","info")
@@ -267,7 +267,7 @@ me.register_node("term", {
     local inv_name = meta:get_string("inv_name")
     local own_inv = meta:get_inventory()
     local ctrl_inv
-    if cp then
+    if cpos then
       ctrl_inv = net:get_inventory()
     else
       me.log("no network connected","warning")

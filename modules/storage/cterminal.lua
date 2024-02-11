@@ -1,5 +1,5 @@
 -- crafting terminal
--- microexpansion/cterminal.lua
+-- microexpansion/modules/storage/cterminal.lua
 
 -- TODO: Bugs, can't craft sticks, oil extract by using the
 -- output. Does work when updating the recipe. Groups are hanky. We
@@ -21,12 +21,13 @@ me.autocrafterCache = {}
 local autocrafterCache = me.autocrafterCache
 
 -- [me chest] Get formspec
-local function chest_formspec(pos, start_id, listname, page_max, q, c)
+local function chest_formspec(pos, start_id, listname, page_max, q, c, d)
   local list
   local page_number = ""
   local buttons = ""
   local query = q or ""
   local crafts = (c and "true") or "false"
+  local desc = (d and "true") or "false"
   local net,cpos = me.get_connected_network(pos)
 
   if cpos then
@@ -62,11 +63,12 @@ local function chest_formspec(pos, start_id, listname, page_max, q, c)
 	listring[context;output]
 	listring[current_player;main]
 	listring[context;search]
-	listring[current_player;main]
       ]]
       buttons = [[
-	button[3.56,4.35;1.8,0.9;tochest;To Drive]
+	button[3.56,4.35;0.9,0.9;tochest;To Drive]
 	tooltip[tochest;Move everything from your inventory to the ME network.]
+	checkbox[4.46,4.35;desc;desc;]]..desc..[[]
+	tooltip[desc;Search the descriptions]
 	button[5.4,4.35;0.8,0.9;prev;<]
 	button[7.25,4.35;0.8,0.9;next;>]
 	tooltip[prev;Previous]
@@ -120,7 +122,8 @@ local function update_chest(pos,_,ev)
   local net = me.get_connected_network(pos)
   local meta = minetest.get_meta(pos)
   if net == nil then
-    meta:set_int("page", 1)
+    page = 1
+    meta:set_int("page", page)
     meta:set_string("formspec", chest_formspec(pos, 1))
     return
   end
@@ -484,6 +487,25 @@ local function on_output_change(pos, linv, stack)
   return 0
 end
 
+local cterm_recipe = nil
+if minetest.get_modpath("mcl_core") then
+cterm_recipe = {
+    { 1, {
+	{"microexpansion:term", "mcl_chests:chest"},
+      },
+    }
+}
+
+else
+
+cterm_recipe = {
+    { 1, {
+	{"microexpansion:term",   "default:chest"},
+      },
+    }
+  }
+end
+
 -- [me cterminal] Register node
 me.register_node("cterminal", {
   description = "ME Crafting Terminal",
@@ -496,12 +518,7 @@ me.register_node("cterminal", {
     "chest_side",
     "chest_front",
   },
-  recipe = {
-    { 1, {
-	{"microexpansion:term",   "default:chest"},
-      },
-    }
-  },
+  recipe = cterm_recipe,
   is_ground_content = false,
   groups = { cracky = 1, me_connect = 1, tubedevice = 1, tubedevice_receiver = 1 },
   paramtype = "light",
@@ -510,7 +527,8 @@ me.register_node("cterminal", {
   on_construct = function(pos)
     local meta = minetest.get_meta(pos)
     meta:set_string("inv_name", "none")
-    meta:set_int("page", 1)
+    page = 1
+    meta:set_int("page", page)
 
     local own_inv = meta:get_inventory()
     own_inv:set_size("src", 1)
@@ -520,9 +538,6 @@ me.register_node("cterminal", {
     local net = me.get_connected_network(pos)
     me.send_event(pos, "connect", {net=net})
     update_chest(pos)
-  end,
-  after_destruct = function(pos)
-    me.send_event(pos, "disconnect")
   end,
   can_dig = function(pos, player)
     if not player then
@@ -538,28 +553,39 @@ me.register_node("cterminal", {
     if not inv:is_empty("recipe") then
       return false
     end
-    local net,cp = me.get_connected_network(pos)
+    local net,cpos = me.get_connected_network(pos)
     if not net then
       return true
     end
     return net:get_access_level(name) >= access_level.modify
   end,
+  after_destruct = function(pos)
+    me.send_event(pos, "disconnect")
+  end,
   allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
+    local net = me.get_connected_network(pos)
+    if net then
+      if net:get_access_level(player) < access_level.interact then
+	return 0
+      end
+    elseif minetest.is_protected(pos, player) then
+      minetest.record_protection_violation(pos, player)
+      return 0
+    end
     --me.log("Allow a move from "..from_list.." to "..to_list, "error")
     local meta = minetest.get_meta(pos)
     if to_list == "recipe" and from_list == "search" then
       local net = me.get_connected_network(pos)
-      local linv = minetest.get_meta(pos):get_inventory()
+      local linv = meta:get_inventory()
       local inv = net:get_inventory()
       local stack = linv:get_stack(from_list, from_index)
-      local meta = minetest.get_meta(pos)
       count = math.min(count, stack:get_stack_max())
       stack:set_count(count)
       me.remove_item(net, inv, "main", stack)
       return count
     end
     if to_list == "output" then
-      local linv = minetest.get_meta(pos):get_inventory()
+      local linv = meta:get_inventory()
       local stack = linv:get_stack(from_list, from_index)
       return on_output_change(pos, linv, stack)
     end
@@ -568,11 +594,10 @@ me.register_node("cterminal", {
     end
     if to_list == "search" then
       local net = me.get_connected_network(pos)
-      local linv = minetest.get_meta(pos):get_inventory()
+      local linv = meta:get_inventory()
       local inv = net:get_inventory()
       local stack = linv:get_stack(from_list, from_index)
       stack:set_count(count)
-      -- local meta = minetest.get_meta(pos)
       -- meta:set_string("infotext", "allow moving: "..stack:get_name())
       -- TODO: Check capacity? Test.
       local leftovers = me.insert_item(stack, net, inv, "main")
@@ -581,6 +606,15 @@ me.register_node("cterminal", {
     return count
   end,
   allow_metadata_inventory_take = function(pos, listname, index, stack, player)
+    local net = me.get_connected_network(pos)
+    if net then
+      if net:get_access_level(player) < access_level.interact then
+	return 0
+      end
+    elseif minetest.is_protected(pos, player) then
+      minetest.record_protection_violation(pos, player)
+      return 0
+    end
     -- This is used for removing items from "search", "recipe" and "output".
     --me.log("Allow a take from "..listname, "error")
     local count = stack:get_count()
@@ -592,7 +626,6 @@ me.register_node("cterminal", {
     end
     --[[if listname == "main" then
       -- This should be unused, we don't have a local inventory called main.
-      local net = me.get_connected_network(pos)
       local inv = net:get_inventory()
       local ret = me.remove_item(net, inv, "main", stack)
       --me.log("REMOVE: after remove count is "..ret:get_count(), "error")
@@ -602,7 +635,15 @@ me.register_node("cterminal", {
     return count
   end,
   allow_metadata_inventory_put = function(pos, listname, index, stack, player)
-    -- me.dbg()
+    local net = me.get_connected_network(pos)
+    if net then
+      if net:get_access_level(player) < access_level.interact then
+	return 0
+      end
+    elseif minetest.is_protected(pos, player) then
+      minetest.record_protection_violation(pos, player)
+      return 0
+    end
     if listname == "output" then
       local linv = minetest.get_meta(pos):get_inventory()
       return on_output_change(pos, linv, stack)
@@ -732,6 +773,9 @@ me.register_node("cterminal", {
     end,
     insert_object = function(pos, _, stack)
       local net = me.get_connected_network(pos)
+      if not net then
+	return stack
+      end
       local inv = net:get_inventory()
       local leftovers = me.insert_item(stack, net, inv, "main")
       net:set_storage_space(true)
@@ -758,8 +802,12 @@ me.register_node("cterminal", {
     end
     local meta = minetest.get_meta(pos)
     local page = meta:get_int("page")
+    local did_update = false
+    local update_search = false
     local inv_name = meta:get_string("inv_name")
+    local query = meta:get_string("query")
     local crafts = meta:get_string("crafts") == "true"
+    local desc = meta:get_string("desc") == "true"
     local own_inv = meta:get_inventory()
     local ctrl_inv
     if cpos then
@@ -784,22 +832,28 @@ me.register_node("cterminal", {
       if page + 32 > inv:get_size(inv_name) then
 	return
       end
-      meta:set_int("page", page + 32)
-      meta:set_string("formspec", chest_formspec(pos, page + 32, inv_name, page_max, fields.filter, crafts))
+      page = page + 32
+      meta:set_int("page", page)
+      did_update = true
     elseif fields.prev then
       if page - 32 < 1 then
 	return
       end
-      meta:set_int("page", page - 32)
-      meta:set_string("formspec", chest_formspec(pos, page - 32, inv_name, page_max, fields.filter, crafts))
+      page = page - 32
+      meta:set_int("page", page)
+      did_update = true
+    elseif fields.desc then
+      meta:set_string("desc", fields.desc)
+      desc = fields.desc == "true"
+      page = 1
+      meta:set_int("page", page)
+      update_search = true
     elseif fields.crafts then
-      meta:set_int("page", 1)
-      --me.log("CRAFT: craftables: "..dump(net and net.process), "error")
-      --me.log("CRAFT: got fields: "..dump(fields), "error")
-      inv_name = "main"
-      if fields.crafts == "true" then
-	crafts = true
-	meta:set_string("crafts", "true")
+      crafts = fields.crafts == "true"
+      meta:set_string("crafts", fields.crafts)
+      page = 1
+      meta:set_int("page", page)
+      if crafts then
 	inv_name = "crafts"
 	local tab = {}
 	if net then
@@ -818,74 +872,41 @@ me.register_node("cterminal", {
 	own_inv:set_list(inv_name, tab)
 	meta:set_string("inv_name", inv_name)
 	page_max = math.floor(own_inv:get_size(inv_name) / 32) + 1
-	meta:set_string("formspec", chest_formspec(pos, 1, inv_name, page_max, fields.filter, crafts))
       else
-	crafts = false
-	meta:set_string("crafts", "false")
-	if fields.filter == "" then
-	  own_inv:set_size("crafts", 0)
+        inv_name = "main"
+	own_inv:set_size("crafts", 0)
+	if query == "" then
 	  meta:set_string("inv_name", inv_name)
 	  page_max = math.floor(ctrl_inv:get_size(inv_name) / 32) + 1
-	  meta:set_string("formspec", chest_formspec(pos, 1, inv_name, page_max, fields.fields, crafts))
 	end
       end
-      if fields.filter ~= "" then
-	inv = own_inv
-	if inv_name == "main" then
-	  inv = ctrl_inv
-	end
-	local tab = {}
-	for i = 1, inv:get_size(inv_name) do
-	  local match = inv:get_stack(inv_name, i):get_name():find(fields.filter)
-	  if match then
-	    tab[#tab + 1] = inv:get_stack(inv_name, i)
-	  end
-	end
-	inv_name = "search"
-	own_inv:set_size(inv_name, #tab)
-	own_inv:set_list(inv_name, tab)
-	meta:set_string("inv_name", inv_name)
-	page_max = math.floor(own_inv:get_size(inv_name) / 32) + 1
-	meta:set_string("formspec", chest_formspec(pos, 1, inv_name, page_max, fields.filter, crafts))
-      end
+      update_search = true
     elseif fields.search or fields.key_enter_field == "filter" then
       own_inv:set_size("search", 0)
       --me.log("CRAFT: got fields: "..dump(fields), "error")
-      meta:set_int("page", 1)
-      inv_name = "main"
-      inv = ctrl_inv
-      if crafts then
-	inv_name = "crafts"
-	inv = own_inv
-      end
-      if fields.filter == "" then
-	meta:set_string("inv_name", inv_name)
-	meta:set_string("formspec", chest_formspec(pos, 1, inv_name, page_max, fields.filter, crafts))
-      else
-	local tab = {}
-	for i = 1, inv:get_size(inv_name) do
-	  local match = inv:get_stack(inv_name, i):get_name():find(fields.filter)
-	  if match then
-	    tab[#tab + 1] = inv:get_stack(inv_name, i)
-	  end
-	end
-	inv_name = "search"
-	own_inv:set_list(inv_name, tab)
-	meta:set_string("inv_name", inv_name)
-	page_max = math.floor(own_inv:get_size(inv_name) / 32) + 1
-	meta:set_string("formspec", chest_formspec(pos, 1, inv_name, page_max, fields.filter, crafts))
-      end
+      page = 1
+      meta:set_int("page", page)
+      query = fields.filter
+      meta:set_string("query", query)
+      update_search = true
     elseif fields.clear then
       --me.log("CRAFT: got fields: "..dump(fields), "error")
       own_inv:set_size("search", 0)
       own_inv:set_size("crafts", 0)
-      meta:set_int("page", 1)
+      page = 1
+      meta:set_int("page", page)
       inv_name = "main"
       meta:set_string("inv_name", inv_name)
+      query = ""
+      meta:set_string("query", query)
+      crafts = false
       meta:set_string("crafts", "false")
       page_max = math.floor(ctrl_inv:get_size(inv_name) / 32) + 1
-      meta:set_string("formspec", chest_formspec(pos, 1, inv_name, page_max))
+      did_update = true
     elseif fields.tochest then
+      if net:get_access_level(sender) < access_level.interact then
+	return
+      end
       local pinv = minetest.get_inventory({type="player", name=sender:get_player_name()})
       -- TODO: test and fix, net:set_storage_space(pinv:get_size("main"))
       local space = net:get_item_capacity()
@@ -905,6 +926,40 @@ me.register_node("cterminal", {
 	  me.autocraft(autocrafterCache, pos, net, own_inv, ctrl_inv, count)
 	end
       end
+    end
+
+    if update_search then
+      inv_name = "main"
+      inv = ctrl_inv
+      if crafts then
+	inv_name = "crafts"
+	inv = own_inv
+      end
+      if query == "" then
+	meta:set_string("inv_name", inv_name)
+      else
+	local tab = {}
+	for i = 1, inv:get_size(inv_name) do
+	  local match = inv:get_stack(inv_name, i):get_name():find(query)
+	  if desc then
+	    match = match or inv:get_stack(inv_name, i):get_description():find(query)
+	    match = match or inv:get_stack(inv_name, i):get_short_description():find(query)
+	  end
+	  if match then
+	    tab[#tab + 1] = inv:get_stack(inv_name, i)
+	  end
+	end
+	inv_name = "search"
+	own_inv:set_size(inv_name, #tab)
+	own_inv:set_list(inv_name, tab)
+	meta:set_string("inv_name", inv_name)
+	page_max = math.floor(own_inv:get_size(inv_name) / 32) + 1
+      end
+      did_update = true
+    end
+
+    if did_update then
+      meta:set_string("formspec", chest_formspec(pos, page, inv_name, page_max, query, crafts, desc))
     end
   end,
 })
