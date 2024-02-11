@@ -1,5 +1,5 @@
 -- matter condenser
--- machines/matter_condenser.lua
+-- microexpansion/modules/quantum/matter_condenser.lua
 
 local me = microexpansion
 local pipeworks_enabled = minetest.get_modpath("pipeworks") and true or false
@@ -146,8 +146,9 @@ me.register_node("matter_condenser", {
       return
     end
     inv:set_stack("input", 1, "")
-    -- todo: a little fast, reduce
-    inv:set_stack("dst", 1, me.create_singularity())
+    if math.random() < dstack:get_count()/256000 then
+      inv:set_stack("dst", 1, me.create_singularity())
+    end
   end,
   tube = {
     can_insert = function(pos, _, stack) --pos, node, stack, direction
