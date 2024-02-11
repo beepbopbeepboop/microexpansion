@@ -581,8 +581,7 @@ me.register_node("cterminal", {
       local stack = linv:get_stack(from_list, from_index)
       count = math.min(count, stack:get_stack_max())
       stack:set_count(count)
-      me.remove_item(net, inv, "main", stack)
-      return count
+      return me.remove_item(net, inv, "main", stack):get_count()
     end
     if to_list == "output" then
       local linv = meta:get_inventory()
