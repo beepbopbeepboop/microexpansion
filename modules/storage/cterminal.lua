@@ -165,10 +165,9 @@ function me.get_craft(pos, inventory, hash)
 end
 
 -- From pipeworks/autocrafter.lua
--- note, that this function assumes allready being updated to virtual items
+-- note, that this function assumes already being updated to virtual items
 -- and doesn't handle recipes with stacksizes > 1
-local function after_recipe_change(pos, inventory)
-  local meta = minetest.get_meta(pos)
+function me.after_recipe_change(pos, inventory)
   -- if we emptied the grid, there's no point in keeping it running or cached
   if inventory:is_empty("recipe") then
     autocrafterCache[minetest.hash_node_position(pos)] = nil
@@ -375,10 +374,10 @@ end
 -- net.autocrafters should not be allowed as the output in that case
 -- is virtual. It can be removed if rinv:"output" has the item iff
 -- that item is removed from the autocrafter's output.
-local function on_output_change(pos, linv, stack)
+function me.network:on_output_change(pos, linv, stack)
   local name = stack:get_name()
   -- me.log("PROCESS: "..name.." was found0", "error")
-  local net = me.get_connected_network(pos)
+  local net = self
   local inv = net:get_inventory()
   local has_enough = true
   local function clear_recipe()
@@ -389,6 +388,7 @@ local function on_output_change(pos, linv, stack)
 	-- full, no room to remove
 	has_enough = false
       elseif prev and prev:get_name() ~= "" and me.insert_item(prev, net, inv, "main"):get_count() > 0 then
+        -- These all can fault, see minetest.after in network.lua
 	net:set_storage_space(true)
 	-- Don't have to worry about this happening until minetest is fully multithreaded
 	has_enough = false
@@ -483,8 +483,59 @@ local function on_output_change(pos, linv, stack)
     width_idx = (width_idx < 3) and (width_idx + 1) or 1
   end
   -- we'll set the output slot in after_recipe_change to the actual result of the new recipe
-  after_recipe_change(pos, linv)
+  me.after_recipe_change(pos, linv)
   return 0
+end
+
+function me.network:take_output(pos, linv, inv)
+  local replace = true
+  -- This assumes that all inputs are only just 1 item, always true?
+  for i = 1, 9 do
+    local inp = linv:get_stack("recipe", i)
+    if inp and inp:get_name() ~= "" then
+      local consume = ItemStack(inp:get_name())
+      replace = replace and (inp:get_count() > 1 or inv:contains_item("main", consume))
+    end
+  end
+  for i = 1, 9 do
+    local inp = linv:get_stack("recipe", i)
+    if inp and inp:get_name() ~= "" then
+      if inp:get_count() == 1 then
+        if inv:contains_item("main", inp) then
+	  local r = me.remove_item(net, inv, "main", inp)
+	  if r:get_count() ~= 1 then
+	    linv:set_stack("recipe", i, ItemStack(""))
+	    replace = false
+	  end
+	else
+	  linv:set_stack("recipe", i, ItemStack(""))
+	  replace = false
+	end
+      else
+	local stack_copy = ItemStack(inp)
+	stack_copy:set_count(inp:get_count()-1)
+	linv:set_stack("recipe", i, stack_copy)
+      end
+    end
+  end
+  -- deal with replacements
+  local hash = minetest.hash_node_position(pos)
+  local craft = autocrafterCache[hash] or me.get_craft(pos, linv, hash)
+  for i = 1, 9 do
+    if (craft.decremented_input.items[i]:get_count() ~= linv:get_stack("recipe", i):get_count()
+	or craft.decremented_input.items[i]:get_name() ~= linv:get_stack("recipe", i):get_name())
+	and not craft.decremented_input.items[i]:is_empty() then
+      local leftovers = me.insert_item(craft.decremented_input.items[i], net, inv, "main")
+      if not leftovers:is_empty() then
+	me.leftovers(pos, leftovers)
+      end
+    end
+    if replace then
+      linv:set_stack("output", 1, craft.output.item)
+    else
+      linv:set_list("output", {})
+    end
+  end
 end
 
 local cterm_recipe = nil
@@ -575,7 +626,6 @@ me.register_node("cterminal", {
     --me.log("Allow a move from "..from_list.." to "..to_list, "error")
     local meta = minetest.get_meta(pos)
     if to_list == "recipe" and from_list == "search" then
-      local net = me.get_connected_network(pos)
       local linv = meta:get_inventory()
       local inv = net:get_inventory()
       local stack = linv:get_stack(from_list, from_index)
@@ -583,16 +633,25 @@ me.register_node("cterminal", {
       stack:set_count(count)
       return me.remove_item(net, inv, "main", stack):get_count()
     end
+    if from_list == "output" then
+      local linv = minetest.get_meta(pos):get_inventory()
+      -- an output with no recipe is a virtual item and can't be taken,
+      -- but if there is a recipe, then it can be taken.
+      local was_empty = true
+      for i = 1, 9 do
+	was_empty = was_empty and linv:get_stack("recipe", i):is_empty()
+      end
+      if was_empty then return 0 end
+    end
     if to_list == "output" then
       local linv = meta:get_inventory()
       local stack = linv:get_stack(from_list, from_index)
-      return on_output_change(pos, linv, stack)
+      return net:on_output_change(pos, linv, stack)
     end
-    if from_list == "crafts" then
+    if from_list == "crafts" or from_list == "search" then
       return 0
     end
     if to_list == "search" then
-      local net = me.get_connected_network(pos)
       local linv = meta:get_inventory()
       local inv = net:get_inventory()
       local stack = linv:get_stack(from_list, from_index)
@@ -619,9 +678,18 @@ me.register_node("cterminal", {
     local count = stack:get_count()
     if listname == "search" or listname == "recipe" then
       count = math.min(count, stack:get_stack_max())
-    end
-    if listname == "crafts" then
+    elseif listname == "crafts" then
       return 0
+    end
+    if listname == "output" then
+      local linv = minetest.get_meta(pos):get_inventory()
+      -- an output with no recipe is a virtual item and can't be taken,
+      -- but if there is a recipe, then it can be taken.
+      local was_empty = true
+      for i = 1, 9 do
+        was_empty = was_empty and linv:get_stack("recipe", i):is_empty()
+      end
+      if was_empty then return 0 end
     end
     --[[if listname == "main" then
       -- This should be unused, we don't have a local inventory called main.
@@ -645,9 +713,8 @@ me.register_node("cterminal", {
     end
     if listname == "output" then
       local linv = minetest.get_meta(pos):get_inventory()
-      return on_output_change(pos, linv, stack)
-    elseif listname == "search" or listname == "main" then
-      local net = me.get_connected_network(pos)
+      return net:on_output_change(pos, linv, stack)
+    elseif listname == "search" or listname == "crafts" then
       local inv = net:get_inventory()
       -- TODO: Check full inv, should be fixed now, confirm.
       local leftovers = me.insert_item(stack, net, inv, "main")
@@ -659,19 +726,7 @@ me.register_node("cterminal", {
     -- me.dbg()
     if listname == "recipe" then
       local linv = minetest.get_meta(pos):get_inventory()
-      after_recipe_change(pos, linv)
-    elseif listname == "search" or listname == "main" then
-      -- done above in allow, nothing left to do here
-    elseif listname == output then
-      -- done above
-    else
-      local net = me.get_connected_network(pos)
-      local inv = net:get_inventory()
-      local leftovers = me.insert_item(stack, net, inv, "main")
-      if not leftovers:is_empty() then
-        me.leftovers(net.controller_pos, leftovers)
-      end
-      net:set_storage_space(true)
+      me.after_recipe_change(pos, linv)
     end
   end,
   on_metadata_inventory_take = function(pos, listname, index, stack)
@@ -680,62 +735,14 @@ me.register_node("cterminal", {
       local linv = minetest.get_meta(pos):get_inventory()
       local num_left = linv:get_stack("output", 1):get_count()
       -- We only need to consume the recipe if there are no more items
-      -- if num_left ~= 0 then return end
-      if num_left > 1 then return end
+      if num_left > 0 then return end
       local net = me.get_connected_network(pos)
       local inv = net:get_inventory()
-      local replace = true
-      -- This assumes that all inputs are only just 1 item, always true?
-      for i = 1, 9 do
-	local inp = linv:get_stack("recipe", i)
-	if inp and inp:get_name() ~= "" then
-	  local consume = ItemStack(inp:get_name())
-	  replace = replace and (inp:get_count() > 1 or inv:contains_item("main", consume))
-	end
-      end
-      for i = 1, 9 do
-	local inp = linv:get_stack("recipe", i)
-	if inp and inp:get_name() ~= "" then
-	  if inp:get_count() == 1 then
-	    if inv:contains_item("main", inp) then
-	      local r = me.remove_item(net, inv, "main", inp)
-	      if r:get_count() ~= 1 then
-		linv:set_stack("recipe", i, ItemStack(""))
-		replace = false
-	      end
-	    else
-	      linv:set_stack("recipe", i, ItemStack(""))
-	      replace = false
-	    end
-	  else
-	    local stack_copy = ItemStack(inp)
-	    stack_copy:set_count(inp:get_count()-1)
-	    linv:set_stack("recipe", i, stack_copy)
-	  end
-	end
-      end
-      -- deal with replacements
-      local hash = minetest.hash_node_position(pos)
-      local craft = autocrafterCache[hash] or me.get_craft(pos, linv, hash)
-      for i = 1, 9 do
-	if (craft.decremented_input.items[i]:get_count() ~= linv:get_stack("recipe", i):get_count()
-	  or craft.decremented_input.items[i]:get_name() ~= linv:get_stack("recipe", i):get_name())
-	  and not craft.decremented_input.items[i]:is_empty() then
-	  local leftovers = me.insert_item(craft.decremented_input.items[i], net, inv, "main")
-	  if not leftovers:is_empty() then
-	    me.leftovers(pos, leftovers)
-	  end
-	end
-	if replace then
-	  linv:set_stack("output", 1, craft.output.item)
-	else
-	  linv:set_list("output", {})
-	end
-      end
+      net:take_output(pos, linv, inv)
     elseif listname == "recipe" then
       local linv = minetest.get_meta(pos):get_inventory()
-      after_recipe_change(pos, linv)
-    elseif listname ~= "main" then
+      me.after_recipe_change(pos, linv)
+    elseif listname == "crafts" or listname == "search" then
       local net = me.get_connected_network(pos)
       local inv = net:get_inventory()
       me.remove_item(net, inv, "main", stack)
@@ -745,7 +752,15 @@ me.register_node("cterminal", {
     --me.log("A move from "..from_list.." to "..to_list, "error")
     if to_list == "recipe" or from_list == "recipe" then
       local inv = minetest.get_meta(pos):get_inventory()
-      after_recipe_change(pos, inv)
+      me.after_recipe_change(pos, inv)
+    elseif from_listname == "output" then
+      local linv = minetest.get_meta(pos):get_inventory()
+      local num_left = linv:get_stack("output", 1):get_count()
+      -- We only need to consume the recipe if there are no more items
+      if num_left > 0 then return end
+      local net = me.get_connected_network(pos)
+      local inv = net:get_inventory()
+      net:take_output(pos, linv, inv)
     end
   end,
   tube = {

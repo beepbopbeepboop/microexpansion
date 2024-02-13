@@ -1,4 +1,5 @@
 local me = microexpansion
+local access_level = microexpansion.constants.security.access_levels
 
 --technic = rawget(_G, "technic") or {}
 
@@ -61,6 +62,7 @@ local function chest_formspec(s, pos, start_id, listname)
 	listring[current_player;main]
 	listring[current_player;output]
 	listring[current_player;main]
+	listring[current_player;me_search]
       ]]
       buttons = [[
 	button[3.56,4.35;0.9,0.9;tochest;To Drive]
@@ -121,6 +123,14 @@ minetest.register_tool("microexpansion:remote", {
       pos.z = pos.z - 1
       local net,cpos = me.get_connected_network(pos)
       if net then
+	if net:get_access_level(user) < access_level.interact then
+	  return 0
+	end
+      elseif minetest.is_protected(pos, user) then
+	minetest.record_protection_violation(pos, user)
+	return 0
+      end
+      if net then
         if not net:powered(user:get_player_name()) then return end
 	minetest.chat_send_player(user:get_player_name(), "Connected to ME network, right-click to use.")
 	toolmeta.terminal = pos
@@ -139,8 +149,9 @@ minetest.register_tool("microexpansion:remote", {
     if not user or not user:is_player() or user.is_fake_player then return end
     local toolmeta = get_metadata(toolstack)
     local pos = toolmeta.terminal
+    local playername = user:get_player_name()
     if not pos then
-      minetest.chat_send_player(user:get_player_name(), "Left-click on ME block to connect to ME network.")
+      minetest.chat_send_player(playername, "Left-click on ME block to connect to ME network.")
       return
     end
     local net,cpos = me.get_connected_network(pos)
@@ -153,7 +164,7 @@ minetest.register_tool("microexpansion:remote", {
     end
 
     if toolmeta.charge < charge_to_take then
-      minetest.chat_send_player(user:get_player_name(), "No power left, recharge in technic battery.")
+      minetest.chat_send_player(playername, "No power left, recharge in technic battery.")
       return
     end
 
@@ -163,7 +174,7 @@ minetest.register_tool("microexpansion:remote", {
       technic.set_RE_wear(toolstack, toolmeta.charge, technic.power_tools[toolstack:get_name()])
     end
 
-    if net and not net:powered(user:get_player_name()) then return end
+    if net and not net:powered(playername) then return end
 
     local page = toolmeta.page
     local inv_name = toolmeta.inv_name
@@ -182,11 +193,12 @@ minetest.register_tool("microexpansion:remote", {
       inv = own_inv
     end
     if net then
+      user:get_meta():set_string("controller_pos", minetest.pos_to_string(net.controller_pos))
       toolmeta.page_max = math.floor(inv:get_size(inv_name) / 32) + 1
       toolstack:set_metadata(minetest.serialize(toolmeta))
     end
 
-    minetest.show_formspec(user:get_player_name(), "microexpansion:remote_control",
+    minetest.show_formspec(playername, "microexpansion:remote_control",
       chest_formspec(toolmeta, pos, page, inv_name))
 
     return toolstack
@@ -224,6 +236,7 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
   local page = toolmeta.page
   local did_update = false
   local update_search = false
+  local to_clear = false
   local do_autocraft = false
   for field, value in pairs(fields) do
     --me.log("REMOTE: form "..field.." value "..value, "error")
@@ -255,17 +268,7 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
         update_search = true
       end
     elseif field == "clear" then
-      own_inv:set_size("me_search", 0)
-      own_inv:set_size("me_crafts", 0)
-      page = 1
-      toolmeta.page = page
-      toolmeta.inv_name = "main"
-      toolmeta.query = ""
-      toolstack:get_meta():set_string("query", "")
-      toolmeta.crafts = "false"
-      toolmeta.page_max = math.floor(inv:get_size(inv_name) / 32) + 1
-      update_search = true
-      did_update = true
+      to_clear = true
     elseif field == "tochest" then
     elseif field == "desc" then
       toolmeta.desc = value
@@ -282,6 +285,20 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
         do_autocraft = true
       end
     end
+  end
+
+  if to_clear then
+    own_inv:set_size("me_search", 0)
+    own_inv:set_size("me_crafts", 0)
+    page = 1
+    toolmeta.page = page
+    toolmeta.inv_name = "main"
+    toolmeta.query = ""
+    toolstack:get_meta():set_string("query", "")
+    toolmeta.crafts = "false"
+    toolmeta.page_max = math.floor(ctrl_inv:get_size(inv_name) / 32) + 1
+    update_search = true
+    did_update = true
   end
 
   if do_autocraft then
@@ -364,6 +381,136 @@ minetest.register_craft({
     {"", "", ""},
   }
 })
+
+minetest.register_allow_player_inventory_action(
+  function(player, action, linv, info)
+    -- linv:get_list(info.from_list)[info.from_index]
+    local from_list = info.from_list
+    local to_list = info.to_list
+    if action == "move" then
+      if (to_list == "recipe" or to_list == "main") and from_list == "me_search" then
+        local cpos = minetest.string_to_pos(player:get_meta():get_string("controller_pos"))
+	local net = me.get_network(cpos)
+	local inv = net:get_inventory()
+	local stack = linv:get_stack(from_list, info.from_index)
+	local count = math.min(info.count, stack:get_stack_max())
+	stack:set_count(count)
+	return me.remove_item(net, inv, "main", stack):get_count()
+      end
+      if to_list == "output" then
+	--local stack = linv:get_list(info.from_list)[info.from_index]
+	local stack = linv:get_stack(from_list, info.from_index)
+        local cpos = minetest.string_to_pos(player:get_meta():get_string("controller_pos"))
+	local net = me.get_network(cpos)
+	return net:on_output_change(cpos, linv, stack)
+      end
+      if from_list == "me_crafts" or from_list == "me_search" then
+	return 0
+      end
+      if from_list == "output" then
+	-- an output with no recipe is a virtual item and can't be taken,
+	-- but if there is a recipe, then it can be taken.
+	local was_empty = true
+	for i = 1, 9 do
+	  was_empty = was_empty and linv:get_stack("recipe", i):is_empty()
+	end
+        if was_empty then return 0 end
+      end
+      if to_list == "me_search" then
+        local cpos = minetest.string_to_pos(player:get_meta():get_string("controller_pos"))
+	local net = me.get_network(cpos)
+	local inv = net:get_inventory()
+	--local stack = linv:get_stack(from_list, info.from_index)
+	local stack = linv:get_list(info.from_list)[info.from_index]
+	stack:set_count(info.count)
+	-- meta:set_string("infotext", "allow moving: "..stack:get_name())
+	-- TODO: Check capacity? Test.
+	local leftovers = me.insert_item(stack, net, inv, "main")
+	return info.count - leftovers:get_count()
+      end
+    elseif action == "take" then
+      local stack = info.stack
+      local count = stack:get_count()
+      local listname = info.listname
+      if listname == "me_search" or listname == "recipe" then
+        count = math.min(count, stack:get_stack_max())
+      elseif listname == "output" then
+	-- an output with no recipe is a virtual item and can't be taken,
+	-- but if there is a recipe, then it can be taken.
+	local was_empty = true
+	for i = 1, 9 do
+	  was_empty = was_empty and linv:get_stack("recipe", i):is_empty()
+	end
+        if was_empty then return 0 end
+      end
+      if listname == "me_crafts" then
+        return 0
+      end
+      return count
+    elseif action == "put" then
+      local cpos = minetest.string_to_pos(player:get_meta():get_string("controller_pos"))
+      local net = me.get_network(cpos)
+      local listname = info.listname
+      if listname == "output" then
+	net:on_output_change(cpos, linv, info.stack)
+      elseif listname == "me_search" or listname == "me_crafts" then
+        local inv = net:get_inventory()
+        -- TODO: Check full inv, should be fixed now, confirm.
+        local leftovers = me.insert_item(stack, net, inv, "main")
+        return stack:get_count() - leftovers:get_count()
+      end
+    end
+    if info.stack then
+      return info.stack:get_count()
+    end
+    return info.count
+  end)
+
+minetest.register_on_player_inventory_action(
+  function(player, action, linv, info)
+    -- linv:get_list(info.from_list)[info.from_index]
+    local from_list = info.from_list
+    local to_list = info.to_list
+    if action == "move" then
+      if from_list == "output" then
+	local num_left = linv:get_stack("output", 1):get_count()
+	-- We only need to consume the recipe if there are no more items
+	if num_left > 0 then return end
+        local cpos = minetest.string_to_pos(player:get_meta():get_string("controller_pos"))
+	local net = me.get_network(cpos)
+	local inv = net:get_inventory()
+	net:take_output(cpos, linv, inv)
+      end
+      if to_list == "recipe" or from_list == "recipe" then
+        local cpos = minetest.string_to_pos(player:get_meta():get_string("controller_pos"))
+	local net = me.get_network(cpos)
+	me.after_recipe_change(cpos, linv)
+      end
+    elseif action == "take" then
+      local stack = info.stack
+      local count = stack:get_count()
+      local listname = info.listname
+      if listname == "output" then
+        local cpos = minetest.string_to_pos(player:get_meta():get_string("controller_pos"))
+	local num_left = linv:get_stack("output", 1):get_count()
+	-- We only need to consume the recipe if there are no more items
+	if num_left > 0 then return end
+	local net = me.get_network(cpos)
+	local inv = net:get_inventory()
+	net:take_output(cpos, linv, inv)
+      elseif listname == "recipe" then
+        local cpos = minetest.string_to_pos(player:get_meta():get_string("controller_pos"))
+	me.after_recipe_change(cpos, linv)
+      elseif listname == "me_crafts" or listname == "me_search" then
+      end
+    elseif action == "put" then
+      local listname = info.listname
+      if listname == "recipe" then
+        local cpos = minetest.string_to_pos(player:get_meta():get_string("controller_pos"))
+	me.after_recipe_change(cpos, linv)
+      end
+    end
+  end)
 
 if technic then
   technic.register_power_tool("microexpansion:remote", 450000)
