@@ -46,6 +46,7 @@ function me.insert_item(stack, net, inv, listname)
     return inv:add_item(listname, stack)
   end
   local to_insert = type(stack) == "userdata" and stack or ItemStack(stack)
+  local slot
   local found = false
   for i = 0, inv:get_size(listname) do
     local inside = inv:get_stack(listname, i)
@@ -59,6 +60,7 @@ function me.insert_item(stack, net, inv, listname)
             print("stack is now " .. inside:to_string())
           end
           inv:set_stack(listname, i, inside)
+	  slot = i
           found = true
           break;
         end
