@@ -57,7 +57,7 @@ end
 -- time.  todo: this solves the end and the outputs, but not the
 -- inputs.  They can be overloaded and we might have to delay putting
 -- things into the machine.
-function me.reserve(net, pos, original_start, length)
+function me.reserve(net, hash, original_start, length)
   if not net.pending then
     net.pending = {}
     net.pending.time = {}
@@ -65,11 +65,11 @@ function me.reserve(net, pos, original_start, length)
   if not net.pending.busy then
     net.pending.busy = {}
   end
-  local free_time = net.pending.busy[pos] or 0
+  local free_time = net.pending.busy[hash] or 0
   local start = math.max(free_time, original_start)
   local ending = start + length
   -- inputs and outputs can collide if we run them too close
-  net.pending.busy[pos] = ending + 1
+  net.pending.busy[hash] = ending + 0.1
   return start
 end
 
@@ -88,13 +88,14 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
   -- of things, help them out.
   local max = me.maximums[name]
   if not max then
-    -- If no explicit max, assume this is a pipeworks autocrafter and
-    -- it only has 12 outputs.
-    max = stack:get_stack_max()*12
+    -- If no explicit max, assume this is a machine with 4 stacks of outputs.
+    max = stack:get_stack_max()*4
   end
   if net.process and net.process[name] then
     max = max * length(net.process[name])
   elseif net.autocrafters[name] then
+    -- autocrafters from pipeworks have a 12 slot output
+    max = stack:get_stack_max()*12
     max = max * length(net.autocrafters[name])
   end
   --me.log("AC: max is "..max , "error")
@@ -117,14 +118,16 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
     local step_time = next_time - time
     return built, step_time
   end
-  --me.log("BUILD: count is "..count.." and stack size is "..stack:get_count(), "error")
+  me.log("BUILD: count is "..count.." and stack size is "..stack:get_count(), "error")
   local dat = {}
   local second_output = nil
-  local main_action_time = count * pipeworks_craft_time + 1
+  local main_action_time = count * pipeworks_craft_time + 1.1
   if net.process and net.process[name] then
     local machines = net.process[name]
     for k, v in pairs(machines) do
-      local mname = minetest.get_node(k).name
+      local apos = minetest.get_position_from_hash(k)
+      local ipos = minetest.get_position_from_hash(v)
+      local mname = minetest.get_node(apos).name
       if not me.block_to_typename_map[mname] then
         -- There is no way this can be. Prune.
 	-- Would be nice if we had a way to notice blocks going away.
@@ -134,8 +137,10 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
       end
       local i = #dat + 1
       dat[i] = {}
-      dat[i].apos = k
-      dat[i].ipos = v
+      dat[i].ahash = k
+      dat[i].ihash = v
+      dat[i].apos = apos
+      dat[i].ipos = ipos
       dat[i].rinv = minetest.get_meta(dat[i].apos):get_inventory()
       -- todo: figure out if we should use total.
       if i == count then
@@ -187,8 +192,10 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
     for k, v in pairs(machines) do
       local i = #dat + 1
       dat[i] = {}
-      dat[i].apos = k
-      dat[i].ipos = v
+      dat[i].ahash = k
+      dat[i].ihash = v
+      dat[i].apos = minetest.get_position_from_hash(k)
+      dat[i].ipos = minetest.get_position_from_hash(v)
       dat[i].rinv = minetest.get_meta(dat[i].apos):get_inventory()
       -- TODO: If we set up pipeworks ac, then we remove interface for it and craft
       -- it goes to ac, and dies here. Flush net.autocrafters for all the
@@ -200,16 +207,12 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
       dat[i].ostack = dat[i].rinv:get_stack("output", 1)
       if dat[i].ostack:get_name() ~= name then
         -- invalidate it
-        net.autocrafters[name][dat[i].apos] = nil
+        net.autocrafters[name][dat[i].ahash] = nil
         --me.log("invalidating autocrafter for "..name, "error")
 	table.remove(dat)
 	if #dat == 0 then
           return
 	end
-      end
-      -- todo: figure out if we should use total.  Test with crafting planks.
-      if i == total then
-        break
       end
     end
     -- Consider looking up the recipe and finding the replacements that way.
@@ -219,8 +222,11 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
     end
     local craft_count = dat[1].ostack:get_count()
     local total = math.ceil(count/craft_count)
+    while #dat > total do
+      table.remove(dat)
+    end
     local subtotal = math.floor((total+#dat-1)/#dat)
-    main_action_time = subtotal * pipeworks_craft_time + 1
+    main_action_time = subtotal * pipeworks_craft_time + 1.1
   else
     me.log("can't craft a "..name, "error")
     return
@@ -260,7 +266,7 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
   local replace = true
   local next_time = {}
   for i = 1, #dat do
-    next_time[i] = me.reserve(net, dat[i].apos, time, main_action_time)
+    next_time[i] = me.reserve(net, dat[i].ahash, time, main_action_time)
   end
   --me.log("RESERVE: "..name.." stime "..time.." step "..main_action_time.." reserve "..next_time[1], "error")
   --me.log("PREP: pre count is "..count, "error")
@@ -299,6 +305,7 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
 	     local inner_stack = stack:take_item(count/total*math.floor((total+i-1)/#dat))
              leftovers = leftovers + dat[i].rinv:add_item("src", inner_stack):get_count()
 	  end
+	  stack = ItemStack(stack)
 	  stack:set_count(leftovers)
 	  --me.log("PREP: post move into real inventory "..stack:get_count().." "..name.." leftovers", "error")
 	  inv:set_stack("ac", slot, stack)
@@ -321,7 +328,7 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
 	-- I think this works, but it is slightly wasteful, but in a good way as
 	-- 10 on 10 machines will each craft 1 on craft_count 2 item yielding 10 extra.
         local subcount = math.floor((count+i-1)/#dat)
-	local inner_istack = istack
+	local inner_istack = ItemStack(istack)
 	inner_istack:set_count(subcount)
         local built, step_time = build(net, cpos, inv, name, subcount, inner_istack, dat[i].isink, time)
         if built then
@@ -399,7 +406,7 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
       local action_time_step = main_action_time
       local action = function(net)
         --me.log("ACTION: post craft for "..stack:get_name(), "error")
-	local inner_stack = stack
+	local inner_stack = ItemStack(stack)
 	-- todo: prove the below is correct.
 	-- See extra below for how I think it fails.
 	inner_stack:set_count(craft_count*math.floor((total+i-1)/#dat))

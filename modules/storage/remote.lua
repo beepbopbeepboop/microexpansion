@@ -314,11 +314,11 @@ minetest.register_on_player_receive_fields(function(user, formname, fields)
 	if not net.process then
 	  net:reload_network()
 	end
-	for name,pos in pairs(net.autocrafters) do
+	for name,hash in pairs(net.autocrafters) do
 	  tab[#tab + 1] = ItemStack(name)
 	end
 	tab[#tab + 1] = ItemStack("")
-	for name,pos in pairs(net.process) do
+	for name,hash in pairs(net.process) do
 	  tab[#tab + 1] = ItemStack(name)
 	end
       end

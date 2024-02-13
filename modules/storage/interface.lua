@@ -20,12 +20,12 @@ end
 function me.walk_connected(pos)
   local nodes = {}
   local visited = {}
-  visited[pos.x] = {}
-  visited[pos.x][pos.y] = {}
-  visited[pos.x][pos.y][pos.z] = true
-  local to_visit = {pos}
+  local hash = minetest.hash_node_position(pos)
+  visited[hash] = true
+  local to_visit = {hash}
   while #to_visit > 0 do
-    local pos = table.remove(to_visit)
+    local hash = table.remove(to_visit)
+    local pos = minetest.get_position_from_hash(hash)
     local adjacent = {
       {x=pos.x+1, y=pos.y,   z=pos.z},
       {x=pos.x-1, y=pos.y,   z=pos.z},
@@ -35,19 +35,15 @@ function me.walk_connected(pos)
       {x=pos.x,   y=pos.y,   z=pos.z-1},
     }
     for _,apos in pairs(adjacent) do
-      if not visited[apos.x] then
-	 visited[apos.x] = {}
-      end
-      if not visited[apos.x][apos.y] then
-	 visited[apos.x][apos.y] = {}
-      end
-      if visited[apos.x][apos.y][apos.z] ~= true then
-	visited[apos.x][apos.y][apos.z] = true
+      local ahash = minetest.hash_node_position(apos)
+      if visited[ahash] ~= true then
+	visited[ahash] = true
+	local apos = minetest.get_position_from_hash(ahash)
 	local napos = minetest.get_node(apos)
 	local nn = napos.name
 	if can_connect(nn) then
 	  table.insert(nodes, {pos=apos, name=nn})
-	  table.insert(to_visit, apos)
+	  table.insert(to_visit, ahash)
 	end
       end
     end
@@ -167,7 +163,9 @@ function me.reload_interface(net, pos, doinventories)
 	  net.process[name] = {}
 	end
 	-- me.log("INT: registering "..name.." for the "..node.name, "error")
-	net.process[name][n.pos] = pos
+	local nhash = minetest.hash_node_position(n.pos)
+	local hash = minetest.hash_node_position(pos)
+	net.process[name][nhash] = hash
       end
     else
       me.reload_inventory(name, net, ctrl_inv, int_meta, n, pos, doinventories)
@@ -267,37 +265,24 @@ me.register_node("interface", {
     end
     net:update_counts()
 
-    -- pos is a table and does not have value semantics.
     if net.autocrafters_by_pos then
-      for k, v in pairs(net.autocrafters_by_pos) do
-        if k.x == pos.x and k.y == pos.y and k.z == pos.z then
-          pos = k
-	  break
-        end
-      end
-      if net.autocrafters_by_pos[pos] then
-        for name, apos in pairs(net.autocrafters_by_pos[pos]) do
+      local hash = minetest.hash_node_position(pos)
+      if net.autocrafters_by_pos[hash] then
+        for name, ahash in pairs(net.autocrafters_by_pos[hash]) do
           -- deindex these upon removal of the interface controlling them
-          net.autocrafters_by_pos[pos][name] = nil
-	  net.autocrafters[name][apos] = nil
+          net.autocrafters_by_pos[hash][name] = nil
+	  net.autocrafters[name][ahash] = nil
         end
       end
     end
     if net.process then
-      -- todo: This is a little slow, speed it up? Interface removal is infrequent.
-      for _, v in pairs(net.process) do
-        for k, ipos in pairs(v) do
-          if ipos.x == pos.x and ipos.y == pos.y and ipos.z == pos.z then
-            pos = ipos
-	    break
-          end
-        end
-      end
+      local hash = minetest.hash_node_position(pos)
       for name, v in pairs(net.process) do
-        for apos, ipos in pairs(v) do
-          if ipos == pos then
+        -- todo: This is a little slow, we could have the inverse map and not walk
+        for ahash, ihash in pairs(v) do
+          if ihash == hash then
 	    --me.log("INTERFACE: killing a mchine for "..name, "error")
-	    net.process[name][apos] = nil
+	    net.process[name][ahash] = nil
           end
         end
       end

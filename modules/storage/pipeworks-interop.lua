@@ -13,13 +13,15 @@ me.register_inventory("pipeworks:autocrafter", function(net, ctrl_inv, int_meta,
   -- register the crafted items so the autocrafter can use them
   local craft = rinv:get_stack("output", 1)
   if not craft:is_empty() then
-    if not net.autocrafters_by_pos[pos] then
-      net.autocrafters_by_pos[pos] = {}
+    local hash = minetest.hash_node_position(pos)
+    if not net.autocrafters_by_pos[hash] then
+      net.autocrafters_by_pos[hash] = {}
     end
-    net.autocrafters_by_pos[pos][craft:get_name()] = n.pos
+    local nhash = minetest.hash_node_position(n.pos)
+    net.autocrafters_by_pos[hash][craft:get_name()] = nhash
     if not net.autocrafters[craft:get_name()] then
       net.autocrafters[craft:get_name()] = {}
     end
-    net.autocrafters[craft:get_name()][n.pos] = pos
+    net.autocrafters[craft:get_name()][nhash] = hash
   end
 end)

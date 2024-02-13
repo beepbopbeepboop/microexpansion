@@ -406,7 +406,8 @@ function me.network:on_output_change(pos, linv, stack)
   if net and net.process[name] then
     -- me.log("PROCESS: "..name.." was found1", "error")
     has_enough = clear_recipe()
-    local pos,ipos = next(net.process[name])
+    local hash,ihash = next(net.process[name])
+    local pos = minetest.get_position_from_hash(hash)
     if has_enough and pos then
       -- me.log("PROCESS: "..name.." was found2", "error")
       local inputs = me.find_by_output(name)
@@ -434,15 +435,11 @@ function me.network:on_output_change(pos, linv, stack)
   elseif net and net.autocrafters[name] then
     has_enough = clear_recipe()
     if has_enough then
-      local pos,ipos = next(net.autocrafters[name])
-      if pos then
-	local rinv = minetest.get_meta(pos):get_inventory()
-	stack = ItemStack(rinv:get_stack("output", 1))
-	linv:set_stack("output", 1, stack)
-      else
-	-- me.log("pos in autocrafters was missing", "error")
-	linv:set_stack("output", 1, ItemStack())
-      end
+      local hash,ihash = next(net.autocrafters[name])
+      local pos = minetest.get_position_from_hash(hash)
+      local rinv = minetest.get_meta(pos):get_inventory()
+      stack = ItemStack(rinv:get_stack("output", 1))
+      linv:set_stack("output", 1, stack)
     else
       linv:set_stack("output", 1, ItemStack())
     end
@@ -874,11 +871,11 @@ me.register_node("cterminal", {
 	  if not net.process then
 	    net:reload_network()
 	  end
-	  for name,pos in pairs(net.autocrafters) do
+	  for name,hash in pairs(net.autocrafters) do
 	    tab[#tab + 1] = ItemStack(name)
 	  end
 	  tab[#tab + 1] = ItemStack("")
-	  for name,pos in pairs(net.process) do
+	  for name,hash in pairs(net.process) do
 	    tab[#tab + 1] = ItemStack(name)
 	  end
 	end
