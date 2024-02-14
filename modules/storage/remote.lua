@@ -449,11 +449,12 @@ minetest.register_allow_player_inventory_action(
       return count
     elseif action == "put" then
       local cpos = minetest.string_to_pos(player:get_meta():get_string("controller_pos"))
-      local net = me.get_network(cpos)
       local listname = info.listname
       if listname == "output" then
+        local net = me.get_network(cpos)
 	net:on_output_change(cpos, linv, info.stack)
       elseif listname == "me_search" or listname == "me_crafts" then
+        local net = me.get_network(cpos)
         local inv = net:get_inventory()
         -- TODO: Check full inv, should be fixed now, confirm.
         local leftovers = me.insert_item(stack, net, inv, "main")
