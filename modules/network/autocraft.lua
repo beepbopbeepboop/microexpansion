@@ -118,7 +118,7 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
     local step_time = next_time - time
     return built, step_time
   end
-  me.log("BUILD: count is "..count.." and stack size is "..stack:get_count(), "error")
+  --me.log("BUILD: count is "..count.." and stack size is "..stack:get_count(), "error")
   local dat = {}
   local second_output = nil
   local main_action_time = count * pipeworks_craft_time + 1.1
