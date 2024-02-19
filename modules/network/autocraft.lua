@@ -305,9 +305,12 @@ local function build(net, cpos, inv, name, count, stack, sink, time)
 	     local inner_stack = stack:take_item(count/total*math.floor((total+i-1)/#dat))
              leftovers = leftovers + dat[i].rinv:add_item("src", inner_stack):get_count()
 	  end
-	  stack = ItemStack(stack)
+	  stack = ItemStack(name)
 	  stack:set_count(leftovers)
 	  --me.log("PREP: post move into real inventory "..stack:get_count().." "..name.." leftovers", "error")
+	  if leftovers > 0 then
+	    net.ac_status = net.ac_status .. time.." Machine was in use, backpressuring "..leftovers.." "..name..".\n"
+	  end
 	  inv:set_stack("ac", slot, stack)
 	end] = name
 	-- and then something moves the size of ac back to before we started
