@@ -158,9 +158,9 @@ minetest.register_tool("microexpansion:remote", {
 
     local charge_to_take = 100
     if net then
-      -- 25 to 1062 eu per operation, rich people pay for distance.
+      -- 150 to 1187 eu per operation, rich people pay for distance.
       local distance = vector.distance(net.controller_pos, user:get_pos())
-      charge_to_take = math.pow(math.log(distance),2) * 10
+      charge_to_take = math.pow(math.log(distance),2) * 10 + 125
     end
 
     if toolmeta.charge < charge_to_take then

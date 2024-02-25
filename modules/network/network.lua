@@ -454,10 +454,10 @@ function network:update_demand()
       local source = minetest.get_meta(pos):get_string("source")
       if source ~= "" then
 	local apos = vector.from_string(source)
-	-- for a pair, 25 to 1062 eu, rich people pay for distance.
+	-- for a pair, 125 to 1162 eu, rich people pay for distance.
 	local distance = vector.distance(net.controller_pos, user:get_pos())
-	local charge_to_take = math.pow(math.log(distance),2) * 10
-	-- When running it take even more
+	local charge_to_take = math.pow(math.log(distance),2) * 10 + 100
+	-- When running it takes even more
         demand = demand + 500 + charge_to_take/2
       end
     else
