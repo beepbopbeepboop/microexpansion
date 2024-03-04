@@ -84,3 +84,19 @@ me.register_item("quartz_crystal", {
 
 
 me.register_node("quartz", quartz_nodedef)
+
+local glcraft_modpath = minetest.get_modpath("glcraft")
+if glcraft_modpath then
+  local glass_ingredient = "default:glass"
+  if mcl_core_modpath then glass_ingredient = "mcl_core:glass" end
+  -- glcraft is part of the nonsensical_skyblock game. It doesn't have a world,
+  -- so we need to add a crafting recipe for the ores.
+  minetest.register_craft({
+    output = "microexpansion:quartz",
+    recipe = {
+      {"bonemeal:fertiliser", glass_ingredient, "bonemeal:fertiliser"},
+      {"bonemeal:fertiliser", stone_ingrediant, "bonemeal:fertiliser"},
+      {"bonemeal:fertiliser", glass_ingredient, "bonemeal:fertiliser"},
+    }
+  })
+end

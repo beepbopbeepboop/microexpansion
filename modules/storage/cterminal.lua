@@ -256,7 +256,8 @@ end
 me.output_by_typename = {
   -- aka me.register_output_by_typename("cooking", "default:stone")
   -- shared by technic and techage
-  ["cooking"] = { "default:stone", "default:copper_ingot", "default:gold_ingot", "default:tin_ingot" }
+  ["cooking"] = { "default:stone", "default:glass", "default:copper_ingot",
+		  "default:gold_ingot", "default:tin_ingot" }
 }
 
 -- Used to register what machine types (typename) produce which outputs.
@@ -285,6 +286,7 @@ end
 me.map_output_to_inputs = {
   -- furnace ("cooking")
   ["default:stone"] = { ItemStack("default:cobble") },
+  ["default:glass"] = { ItemStack("default:sand") },
 }
 
 
