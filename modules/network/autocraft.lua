@@ -70,6 +70,7 @@ function me.reserve(net, hash, original_start, length)
   local ending = start + length
   -- inputs and outputs can collide if we run them too close
   net.pending.busy[hash] = ending + 0.1
+  --net:aclog(original_start, "Machine "..hash.." in use: "..free_time.." and needed for "..length.." finishing at "..(ending+0.0))
   return start
 end
 
@@ -84,7 +85,7 @@ end
 local defer_move = function(net, name, count, total, time, dat, inv, prepworkbits, grabbed)
   local slot = inv:get_size("ac")+1
   --me.log("SLOT: inv now has "..slot.." slots.", "error")
-  --net.ac_status = net.ac_status .. time.."   Did save "..grabbed:get_count().." "..grabbed:get_name().." into slot "..slot..".\n"
+  --net:aclog(time, "  Did save "..grabbed:get_count().." "..grabbed:get_name().." into slot "..slot)
   inv:set_size("ac", slot)
   inv:set_stack("ac", slot, grabbed)
   -- and later we do this:
@@ -92,7 +93,7 @@ local defer_move = function(net, name, count, total, time, dat, inv, prepworkbit
     --me.log("PREP: about to move "..name, "error")
     local stack = inv:get_stack("ac", slot)
     --me.log("PREP: before move actual content of slot "..slot.." is "..stack:get_count().." "..stack:get_name(), "error")
-    --net.ac_status = net.ac_status .. time.."   Loading "..stack:get_count().." "..name.." from slot "..slot..".\n"
+    --net:aclog(time, "  Loading "..stack:get_count().." "..name.." from slot "..slot)
     local leftovers = 0
     for i = 1, #dat do
        -- todo: prove the below is correct.
@@ -104,11 +105,43 @@ local defer_move = function(net, name, count, total, time, dat, inv, prepworkbit
     stack:set_count(leftovers)
     --me.log("PREP: post move into real inventory "..stack:get_count().." "..name.." leftovers", "error")
     if leftovers > 0 then
-      net.ac_status = net.ac_status .. time.." Machine was in use, backpressuring "..leftovers.." "..name..".\n"
+      net:aclog(time, "Machine was in use, backpressuring "..leftovers.." "..name)
     end
     inv:set_stack("ac", slot, stack)
   end
   prepworkbits[func] = name
+end
+
+local function trim(net, dat, total)
+  local recip = dat[1].recip
+  local ostack = dat[1].ostack
+  dat[1].recip = nil
+  dat[1].ostack = nil
+  -- don't split stupidly small counts across machines, too much
+  -- wasted time and too inefficient.
+  --if total < 5 then total = 1 end
+
+  -- we sort all available machines so we can use the least busy machines first
+  if not net.pending then
+    net.pending = {}
+    net.pending.time = {}
+  end
+  if not net.pending.busy then
+    net.pending.busy = {}
+  end
+  local key = function(r)
+    return net.pending.busy[r.ahash] or 0
+  end
+  local cmp = function(a, b)
+    return key(a) < key(b)
+  end
+  table.sort(dat, cmp)
+  -- Remove the extra machines.
+  while #dat > total do
+    table.remove(dat)
+  end
+  dat[1].recip = recip
+  dat[1].ostack = ostack
 end
 
 -- Testing: HV solar is realiable, big loans are screwy.
@@ -141,7 +174,7 @@ local function build(net, cpos, inv, name, count, stack, iprepworkbits, sink, ti
       if not built then
         -- we are done, can't craft, so stop
       else
-	next_time = math.max(next_time, time + step_time)
+	next_time = next_time + step_time
       end
       count = count - max
     end
@@ -172,10 +205,6 @@ local function build(net, cpos, inv, name, count, stack, iprepworkbits, sink, ti
       dat[i].apos = apos
       dat[i].ipos = ipos
       dat[i].rinv = minetest.get_meta(dat[i].apos):get_inventory()
-      -- todo: figure out if we should use total.
-      if i == count then
-        break
-      end
       ::continue::
     end
     --me.log("INT: looking up output "..name, "error")
@@ -196,10 +225,7 @@ local function build(net, cpos, inv, name, count, stack, iprepworkbits, sink, ti
     local speed = me.speed[machine_name] or 1
     local craft_count = dat[1].ostack:get_count()
     local total = math.ceil(count/craft_count)
-    -- Remove the extra machines.  In theory we could remove the busy machines.
-    while #dat > total do
-      table.remove(dat)
-    end
+    trim(net, dat, total)
     -- crafting 4 carbon plates misses taking 1 carbon plate on output, make this bigger
     -- we'll try 1 for now, figure out right formula.  1 looks perfect.  128 glue is short by 2
     -- 1  + 1 is a second too slow on the doped for 81., 2 +0 doesn't work, a second shy
@@ -253,9 +279,7 @@ local function build(net, cpos, inv, name, count, stack, iprepworkbits, sink, ti
     end
     local craft_count = dat[1].ostack:get_count()
     local total = math.ceil(count/craft_count)
-    while #dat > total do
-      table.remove(dat)
-    end
+    trim(net, dat, total)
     local subtotal = math.floor((total+#dat-1)/#dat)
     main_action_time = subtotal * pipeworks_craft_time + 1.1
   else
@@ -268,21 +292,21 @@ local function build(net, cpos, inv, name, count, stack, iprepworkbits, sink, ti
     dat[i].isink = function(sstack, time)
       if dat[i].slots == true then
         -- if we have already run the final move, we can move in place directly.
-	--net.ac_status = net.ac_status .. time.."   Simple sink, about to move "..sstack:get_count().." "..sstack:get_name()..".\n"
+	--net:aclog(time, "  Simple sink, about to move "..sstack:get_count().." "..sstack:get_name())
         local leftovers = dat[i].rinv:add_item("src", sstack)
-        --net.ac_status = net.ac_status .. time.."   Leftovers "..leftovers:get_count().." "..leftovers:get_name()..".\n"
+        --net:aclog(time, "  Leftovers "..leftovers:get_count().." "..leftovers:get_name())
 	return leftovers
       end
       local slot = inv:get_size("ac")+1
       --me.log("SLOT: inv now has "..slot.." slots.", "error")
-      --net.ac_status = net.ac_status .. time.."   For "..count.." "..name.." for machine "..i.." created slot "..slot..".\n"
+      --net:aclog(time, "  For "..count.." "..name.." for machine "..i.." created slot "..slot)
       inv:set_size("ac", slot)
       if not dat[i].slots then
 	dat[i].slots = {}
       end
       dat[i].slots[slot] = true
       --me.log("TIMER: prep inputs, moving "..sstack:get_count().." "..sstack:get_name(), "error")
-      --net.ac_status = net.ac_status .. time.."   Sinking "..sstack:get_count().." "..sstack:get_name().." for "..name.." into slot "..slot..".\n"
+      --net:aclog(time, "  Sinking "..sstack:get_count().." "..sstack:get_name().." for "..name.." into slot "..slot)
       inv:set_stack("ac", slot, sstack)
       return ItemStack()
     end
@@ -294,12 +318,12 @@ local function build(net, cpos, inv, name, count, stack, iprepworkbits, sink, ti
       for slot,_ in pairs(dat[i].slots) do
         local stack = inv:get_stack("ac", slot)
 	--me.log("PREP: before move actual content of slot "..slot.." is "..stack:get_count().." "..stack:get_name(), "error")
-        --net.ac_status = net.ac_status .. time.."   About to move sunk "..stack:get_count().." "..stack:get_name()..", for "..count.." "..name.." from slot "..slot..".\n"
+        --net:aclog((time, "  About to move sunk "..stack:get_count().." "..stack:get_name()..", for "..count.." "..name.." from slot "..slot)
         local leftovers = dat[i].rinv:add_item("src", stack)
         --me.log("PREP: post move into real inventory "..stack:get_count().." "..name.." leftovers", "error")
-        --net.ac_status = net.ac_status .. time.."   Leftovers "..leftovers:get_count().." "..leftovers:get_name()..".\n"
+        --net:aclog(time, "  Leftovers "..leftovers:get_count().." "..leftovers:get_name())
         if not leftovers:is_empty() then
-          net.ac_status = net.ac_status .. time.." Machine was in use, backpressuring "..leftovers:get_count().." "..name..".\n"
+          net:aclog(time, "Machine was in use, backpressuring "..leftovers:get_count().." "..name)
         end
         inv:set_stack("ac", slot, leftovers)
 	--slot = 0
@@ -309,9 +333,9 @@ local function build(net, cpos, inv, name, count, stack, iprepworkbits, sink, ti
   end
   prepworkbits[function(time)
     for i = 1, #dat do
-      --net.ac_status = net.ac_status .. time.." PREP2ing before "..name..".\n"
+      --net:aclog(time, "PREP2ing before "..name)
       funcs[i](i, time)
-      --net.ac_status = net.ac_status .. time.." PREP2ing after "..name..".\n"
+      --net:aclog(time, "PREP2ing after "..name)
     end
   end] = name
   local craft_count = dat[1].ostack:get_count()
@@ -329,7 +353,7 @@ local function build(net, cpos, inv, name, count, stack, iprepworkbits, sink, ti
     for i = 1, #dat[1].recip.input do
     local inp = dat[1].recip.input[i]
     --me.log("MID: consuming "..inp:get_name().." count: "..count.." inp:getcount: "..inp:get_count(), "error")
-    --net.ac_status = net.ac_status .. time.."     Consuming "..inp:get_count().." "..inp:get_name()..".\n"
+    --net:aclog(time, "    Consuming "..inp:get_count().." "..inp:get_name())
     consume[inp:get_name()] = (consume[inp:get_name()] or 0) + count*inp:get_count()
     end
   else
@@ -344,7 +368,7 @@ local function build(net, cpos, inv, name, count, stack, iprepworkbits, sink, ti
   local replace = true
   local next_time = {}
   for i = 1, #dat do
-    next_time[i] = me.reserve(net, dat[i].ahash, time, main_action_time)
+    next_time[i] = time
   end
   --me.log("RESERVE: "..name.." stime "..time.." step "..main_action_time.." reserve "..next_time[1], "error")
   --me.log("PREP: pre count is "..count, "error")
@@ -366,18 +390,18 @@ local function build(net, cpos, inv, name, count, stack, iprepworkbits, sink, ti
       local grabbed = me.remove_item(net, inv, "main", istack)
       if grabbed and grabbed:get_count() == count then
         --me.log("ac grabbed "..name, "error")
-	net.ac_status = net.ac_status .. time.." Grabbed "..count.." "..name..".\n"
+	net:aclog(time, " Grabbed "..count.." "..name)
 	defer_move(net, name, count, total, time, dat, inv, prepworkbits, grabbed)
 	-- and then something moves the size of ac back to before we started
       else
 	--me.log("ac could not grab "..count.." "..name, "error")
-	net.ac_status = net.ac_status .. time.." Could not grab "..count.." "..name..".\n"
+	net:aclog(time, "Could not grab "..count.." "..name)
 	hasit = false
       end
     else
       -- Try and autocraft it
       --me.log("AC: recursive crafting "..count.." "..istack:get_count(), "error")
-      net.ac_status = net.ac_status .. time.." Need to craft "..count.." "..name..".\n"
+      net:aclog(time, " Need to craft "..count.." "..name)
       hasit = true
       local final_step_time = 0
       for i = 1, #dat do
@@ -391,16 +415,17 @@ local function build(net, cpos, inv, name, count, stack, iprepworkbits, sink, ti
         local built, step_time = build(net, cpos, inv, name, subcount, inner_istack, prepworkbits, dat[i].isink, time)
         if built then
 	  next_time[i] = math.max(next_time[i], time + step_time)
+	  --net:aclog(next_time[i], "recursive time for "..i.." is "..next_time[i])
 	  final_step_time = math.max(final_step_time, step_time)
         else
 	  hasit = false
         end
       end
       if hasit then
-	net.ac_status = net.ac_status .. time.." Craft "..count.." "..name.." in "..final_step_time.." seconds.\n"
+	net:aclog(time, "Craft "..count.." "..name.." in "..final_step_time.." seconds")
       else
 	me.log("can't craft "..istack:get_count().." "..istack:get_name(), "error")
-	net.ac_status = net.ac_status .. (time+final_step_time).." Can't craft "..count.." "..name..".\n"
+	net:aclog(time+final_step_time, "Can't craft "..count.." "..name)
       end
     end
     replace = replace and hasit
@@ -409,10 +434,10 @@ local function build(net, cpos, inv, name, count, stack, iprepworkbits, sink, ti
     -- Do all the little bits of prepwork
     for func, name in pairs(prepworkbits) do
       --me.log("PREPing: before "..name, "error")
-      --net.ac_status = net.ac_status .. time.." PREPing before "..name..".\n"
+      --net:aclog(time, "PREPing before "..name)
       func(time)
       --me.log("PREPing: done "..name, "error")
-      --net.ac_status = net.ac_status .. time.." PREPing after "..name..".\n"
+      --net:aclog(time, "PREPing after "..name)
     end
   end
   -- end of prepwork
@@ -426,10 +451,21 @@ local function build(net, cpos, inv, name, count, stack, iprepworkbits, sink, ti
   local tmp_next_time = next_time
   next_time = 0
   for i = 1, #dat do
-    next_time = math.max(next_time, tmp_next_time[i])
+    -- We need to bump next time up to account for all machine reservations, use 0
+    -- to merely find when the machine is free next. When all are free, that's when
+    -- we start.
+    next_time = math.max(next_time, me.reserve(net, dat[i].ahash, tmp_next_time[i], 0))
   end
+  local actual_time = next_time
+  --net:aclog(actual_time, " Actual time was "..actual_time)
+  -- and reserve all of them til the end of the last one
+  for i = 1, #dat do
+    actual_time = math.max(actual_time, me.reserve(net, dat[i].ahash, next_time, main_action_time) + main_action_time)
+  end
+  --net:aclog(actual_time, " Actual endtime is "..actual_time)
   local main_action = function()
     --me.log("ACTION: prep for "..stack:get_name(), "error")
+    net:aclog(next_time, "Now crafting "..name)
     prepwork(next_time)
     -- and once we are done with all the postponed work, we can reduce "ac"
     -- lifetimes are more complex than you can imagine.
@@ -477,17 +513,18 @@ local function build(net, cpos, inv, name, count, stack, iprepworkbits, sink, ti
         -- deal with output and replacements
 	local dst_stack = dat[i].rinv:remove_item("dst", inner_stack)
 	local ctime = next_time+action_time_step
+        net:aclog(ctime, "  Now done with "..name)
 	if dst_stack:get_count() ~= inner_stack:get_count() then
           --me.log("wow, missing items that should have been crafted "..stack:get_name(), "error")
 	  -- me.log("saw "..dst_stack:get_count().." items instead of "..inner_stack:get_count().." items", "error")
-	  net.ac_status = net.ac_status .. ctime.." Missing "..(inner_stack:get_count()-dst_stack:get_count()).." "..name..", only made "..dst_stack:get_count()..".\n"
+	  net:aclog(ctime, "Missing "..(inner_stack:get_count()-dst_stack:get_count()).." "..name..", only made "..dst_stack:get_count())
 	end
 	if not dst_stack:is_empty() then
 	  --me.log("TIMER: inserting "..dst_stack:get_count().." "..dst_stack:get_name(), "error")
 	  local leftovers = sink(dst_stack, ctime)
 	  if leftovers and not leftovers:is_empty() then
 	    --me.log("autocrafter overflow, backpressuring", "error")
-	    net.ac_status = net.ac_status .. ctime.." Backpressure of "..name..".\n"
+	    net:aclog(ctime, "Backpressure of "..name)
 	    -- If any don't fit, back pressure on the crafter, we don't
 	    -- mean to do this, and want to chunk the crafting items smaller
 	    dat[i].rinv:add_item("dst", leftovers)
@@ -503,14 +540,14 @@ local function build(net, cpos, inv, name, count, stack, iprepworkbits, sink, ti
 	  if dst_stack:get_count() ~= extra:get_count() then
             --me.log("wow, missing items that should have been crafted "..stack:get_name(), "error")
 	    --me.log("saw "..dst_stack:get_count().." items instead of "..extra:get_count().." items", "error")
-	    net.ac_status = net.ac_status .. ctime.." Missing "..(extra:get_count() - dst_stack:get_count()).." extra "..name..".\n"
+	    net:aclog(ctime, "Missing "..(extra:get_count() - dst_stack:get_count()).." extra "..name)
 	  end
 	  if not dst_stack:is_empty() then
 	    local leftovers = me.insert_item(dst_stack, net, inv, "main")
 	    net:set_storage_space(true)
 	    if leftovers and not leftovers:is_empty() then
 	      --me.log("autocrafter overflow, backpressuring", "error")
-	      net.ac_status = net.ac_status .. ctime.." Backpressure of "..name..".\n"
+	      net:aclog(ctime, "Backpressure of "..name)
 	      -- If any don't fit, back pressure on the crafter, we don't
 	      -- mean to do this, and want to chunk the crafting items smaller
 	      dat[i].rinv:add_item("dst", leftovers)
@@ -523,7 +560,7 @@ local function build(net, cpos, inv, name, count, stack, iprepworkbits, sink, ti
 	    local leftovers = me.insert_item(second, net, inv, "main")
 	    if leftovers and not leftovers:is_empty() then
 	      --me.log("autocrafter overflow, backpressuring", "error")
-	      net.ac_status = net.ac_status .. ctime.." Backpressure of "..name..".\n"
+	      net:aclog(ctime, "Backpressure of "..name)
 	      -- If any don't fit, back pressure on the crafter, we don't
 	      -- mean to do this, and want to chunk the crafting items smaller
 	      dat[i].rinv:add_item("dst", leftovers)
@@ -544,8 +581,7 @@ local function build(net, cpos, inv, name, count, stack, iprepworkbits, sink, ti
   --me.log("LATER: main action for "..stack:get_name().." in "..next_time.." seconds", "error")
   me.later(net, cpos, main_action, next_time)
 
-  -- The step time is the prep time and the main_action_time
-  local step_time = next_time - time + main_action_time
+  local step_time = actual_time - time
   return true, step_time
 end
 
@@ -565,7 +601,7 @@ function me.later(net, cpos, action, time)
   end
   if i == 1 then
     --me.log("TIMER: starting timer to fire at "..time.." seconds", "error")
-    me.start_crafting(cpos, time+0.1)
+    me.start_crafting(cpos, time+0.0)
   else
     -- me.log("TIMER: did not start timer for later, index "..i.." at time "..time, "error")
     -- bubble sort the entry back to the right spot
@@ -581,7 +617,7 @@ function me.later(net, cpos, action, time)
 	net.pending[i-1] = net.pending[i]
 	net.pending[i] = t
 	if i == 2 then
-	  me.start_crafting(cpos, net.pending.time[1]+0.1)
+	  me.start_crafting(cpos, net.pending.time[1]+0.0)
 	end
       else
         break
@@ -613,12 +649,12 @@ function me.autocraft(autocrafterCache, cpos, net, linv, inv, count)
     net:reload_network()
   end
   if net.autocrafters[name] or net.process[name] then
-    --me.log("using pipeworks autocrafter", "error")
+    --me.log("Using pipeworks autocrafter", "error")
     if not net.pending or not net.ac_status then
       net.ac_status = ""
     end
     local start_time = me.autocraft_next_start(net) or 0
-    net.ac_status = net.ac_status .. start_time.." using pipeworks autocrafter\n"
+    net:aclog(start_time, "\nUsing pipeworks autocrafter")
     local sink = function(stack, time)
       local leftovers = me.insert_item(stack, net, inv, "main")
       net:set_storage_space(true)
@@ -627,10 +663,10 @@ function me.autocraft(autocrafterCache, cpos, net, linv, inv, count)
     local built, step_time = build(net, cpos, inv, name, count*craft_count, stack, nil, sink, start_time)
     if built then
       --me.log("crafting "..stack:get_count().." "..stack:get_name().." in "..step_time.." seconds", "error")
-      net.ac_status = net.ac_status .. start_time.." Crafting "..(count*craft_count).." "..name.." in "..step_time.." seconds.\n"
+      net:aclog(start_time, "Crafting "..(count*craft_count).." "..name.." in "..step_time.." seconds")
     else
       --me.log("can't craft "..stack:get_count().." "..stack:get_name(), "error")
-      net.ac_status = net.ac_status .. (start_time).." Can't craft "..(count*craft_count).." "..name..".\n"
+      net:aclog(start_time, "Can't craft "..(count*craft_count).." "..name)
     end
     return
   end

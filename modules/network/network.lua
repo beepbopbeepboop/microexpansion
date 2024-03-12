@@ -518,3 +518,7 @@ end
 
 function network:update_counts()
 end
+
+function network:aclog(time, msg)
+  self.ac_status = self.ac_status ..time.." "..msg..".\n"
+end
