@@ -66,15 +66,15 @@ item_transfer.register_io_device("annihilation", {
   connect_sides = { "left" },
   recipe = {
     { 1, {
-        {"", "basic_materials:ic", microexpansion.iron_ingot_ingredient },
-        {"", "microexpansion:cable", "group:hoe" },
         {"", "", microexpansion.iron_ingot_ingredient },
+        {"", "microexpansion:cable", "group:hoe" },
+        {"", "basic_materials:ic", microexpansion.iron_ingot_ingredient },
       },
     },
     { 1, {
-        {"", "microexpansion:logic_chip", microexpansion.iron_ingot_ingredient },
-        {"", "microexpansion:cable", "group:hoe" },
         {"", "", microexpansion.iron_ingot_ingredient },
+        {"", "microexpansion:cable", "group:hoe" },
+        {"", "microexpansion:logic_chip", microexpansion.iron_ingot_ingredient },
       },
     }
   },
