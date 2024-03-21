@@ -18,10 +18,16 @@ local function exporter_timer(pos, elapsed)
     --TODO: move more with upgrades
     local own_inv = minetest.get_meta(pos):get_inventory()
     local upgrades = me.count_upgrades(own_inv)
+    local max_count = math.pow(2, upgrades.bulk or 0)
     local export_filter = upgrades.filter and function(stack)
+      local s = stack:peek_item(max_count)
+      -- Ensure bulk exports are full sized, this allows uranium to work
+      -- in centrifuges.
+      if s:get_count() < max_count then
+	return not false
+      end
       return not own_inv:contains_item("filter",stack:peek_item())
     end
-    local max_count = math.pow(2, upgrades.bulk or 0)
     me.move_inv(net, {inv=net:get_inventory(), name="main", huge=true}, {inv=inv, name=list}, max_count, export_filter)
     --TODO: perhaps call allow_insert and on_insert callbacks
   end
