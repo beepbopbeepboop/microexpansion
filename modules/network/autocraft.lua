@@ -236,7 +236,8 @@ local function build(net, cpos, inv, name, count, stack, iprepworkbits, sink, ti
     --main_action_time = subtotal*1.025*dat[1].recip.time/speed + 2 -- ok
     --main_action_time = math.ceil(subtotal*1.02*dat[1].recip.time/speed) + 1 -- too fast?
     --main_action_time = math.ceil(subtotal*1.02*dat[1].recip.time/speed) + 1.2 -- too fast?
-    main_action_time = math.ceil((subtotal+1)*1.02*dat[1].recip.time/speed) + 1.2 -- too fast?
+    --main_action_time = math.ceil((subtotal+1)*1.02*dat[1].recip.time/speed) + 1.2 -- too fast?
+    main_action_time = math.ceil((subtotal+1)*1.04*dat[1].recip.time/speed) + 1.2 -- too fast?
     if second_output then
       second_output = ItemStack(second_output)
       second_output:set_count(second_output:get_count()*total)
@@ -627,50 +628,17 @@ function me.later(net, cpos, action, time)
   end
 end
 
-function me.autocraft(autocrafterCache, cpos, net, linv, inv, count)
-  local ostack = linv:get_stack("output", 1)
-  local name = ostack:get_name()
-  --me.log("crafting "..name.." "..tostring(count), "error")
-
-  local stack = ItemStack(name)
-  local craft_count = ostack:get_count()
-  --me.log("auto: craft_count "..craft_count.." count "..count, "error")
-  -- we craft a minimum of count, to the multiple of the crafting count
-  count = math.ceil(count/craft_count)
-  --me.log("auto: count is now "..count, "error")
-  stack:set_count(count*craft_count)
-  --me.log("auto: stack size is now "..stack:get_count(), "error")
-  --me.log("auto: and build count is "..(count*craft_count), "error")
-
-  -- me.log("autocrafters: "..minetest.serialize(net.autocrafters), "error")
-
-  if not net.process then
-    -- rewalk the interfaces on the network to rebuild the machines.
-    net:reload_network()
+local recipe_is_empty = function(linv)
+  for i = 1, 9 do
+    local inp = linv:get_stack("recipe", i)
+    if inp and not inp:is_empty() then
+      return false
+    end
   end
-  if net.autocrafters[name] or net.process[name] then
-    --me.log("Using pipeworks autocrafter", "error")
-    if not net.pending or not net.ac_status then
-      net.ac_status = ""
-    end
-    local start_time = me.autocraft_next_start(net) or 0
-    net:aclog(start_time, "\nUsing pipeworks autocrafter")
-    local sink = function(stack, time)
-      local leftovers = me.insert_item(stack, net, inv, "main")
-      net:set_storage_space(true)
-      return leftovers
-    end
-    local built, step_time = build(net, cpos, inv, name, count*craft_count, stack, nil, sink, start_time)
-    if built then
-      --me.log("crafting "..stack:get_count().." "..stack:get_name().." in "..step_time.." seconds", "error")
-      net:aclog(start_time, "Crafting "..(count*craft_count).." "..name.." in "..step_time.." seconds")
-    else
-      --me.log("can't craft "..stack:get_count().." "..stack:get_name(), "error")
-      net:aclog(start_time, "Can't craft "..(count*craft_count).." "..name)
-    end
-    return
-  end
+  return true
+end
 
+local lautocraft = function(autocrafterCache, cpos, net, linv, inv, count, stack)
   --me.log("using microexpansion autocrafter", "error")
   local consume = {}
   for i = 1, 9 do
@@ -727,5 +695,54 @@ function me.autocraft(autocrafterCache, cpos, net, linv, inv, count)
 	linv:set_list("output", {})
       end
     end
+  end
+end
+
+function me.autocraft(autocrafterCache, cpos, net, linv, inv, count)
+  local ostack = linv:get_stack("output", 1)
+  local name = ostack:get_name()
+  --me.log("crafting "..name.." "..tostring(count), "error")
+
+  local stack = ItemStack(name)
+  local craft_count = ostack:get_count()
+  --me.log("auto: craft_count "..craft_count.." count "..count, "error")
+  -- we craft a minimum of count, to the multiple of the crafting count
+  count = math.ceil(count/craft_count)
+  --me.log("auto: count is now "..count, "error")
+  stack:set_count(count*craft_count)
+  --me.log("auto: stack size is now "..stack:get_count(), "error")
+  --me.log("auto: and build count is "..(count*craft_count), "error")
+
+  -- me.log("autocrafters: "..minetest.serialize(net.autocrafters), "error")
+
+  if not recipe_is_empty(linv) then
+    lautocraft(autocrafterCache, cpos, net, linv, inv, count, stack)
+  end
+
+  if not net.process then
+    -- rewalk the interfaces on the network to rebuild the machines.
+    net:reload_network()
+  end
+  if net.autocrafters[name] or net.process[name] then
+    --me.log("Using pipeworks autocrafter", "error")
+    if not net.pending or not net.ac_status then
+      net.ac_status = ""
+    end
+    local start_time = me.autocraft_next_start(net) or 0
+    net:aclog(start_time, "\nUsing pipeworks autocrafter")
+    local sink = function(stack, time)
+      local leftovers = me.insert_item(stack, net, inv, "main")
+      net:set_storage_space(true)
+      return leftovers
+    end
+    local built, step_time = build(net, cpos, inv, name, count*craft_count, stack, nil, sink, start_time)
+    if built then
+      --me.log("crafting "..stack:get_count().." "..stack:get_name().." in "..step_time.." seconds", "error")
+      net:aclog(start_time, "Crafting "..(count*craft_count).." "..name.." in "..step_time.." seconds")
+    else
+      --me.log("can't craft "..stack:get_count().." "..stack:get_name(), "error")
+      net:aclog(start_time, "Can't craft "..(count*craft_count).." "..name)
+    end
+    return
   end
 end
